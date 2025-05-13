@@ -1,0 +1,242 @@
+# Translation Manager
+
+## Descripción
+
+Translation Manager es una herramienta web interna para gestionar traducciones de aplicaciones, eliminando la dependencia de Excel y facilitando la colaboración, revisión y robustez del sistema de copys. El flujo es 100% en la app: puedes crear, editar, traducir y asignar copys y slugs desde la interfaz, sin depender de archivos externos. Permite asignar tareas de traducción a usuarios por idioma, controlar el estado de cada copy y trabajar de forma colaborativa y ágil.
+
+---
+
+## Principios y enfoque ágil
+
+- Desarrollo incremental: entregas pequeñas y funcionales en cada sprint.
+- Priorización de valor: primero funcionalidades core, luego mejoras y automatizaciones.
+- Feedback continuo: iteramos en base a uso real y feedback del equipo.
+
+---
+
+## Roles y tipos de usuario
+
+- **Administrador:** gestiona usuarios, asigna tareas, revisa y aprueba traducciones.
+- **Traductor:** recibe y gestiona tareas de traducción por idioma, marca como traducido o en revisión.
+- **Revisor:** valida traducciones y deja feedback.
+- **Colaborador:** puede proponer copys o sugerir cambios.
+
+---
+
+## Flujo de trabajo completo
+
+1. **Creación de copys y slugs:**
+   - Directamente en la app, individualmente o en lote.
+   - Sugerencia automática de slugs si solo tienes el copy.
+2. **Edición y gestión centralizada:**
+   - Búsqueda, filtrado y edición en tiempo real.
+   - Estado de cada copy: pendiente, traducido, revisado, aprobado.
+3. **Asignación de tareas por idioma y usuario:**
+   - El admin asigna copys pendientes a traductores según idioma.
+   - Cada traductor ve solo sus tareas y puede marcar como traducido.
+4. **Traducción asistida:**
+   - Traducción manual o sugerida por IA (ChatGPT) desde la interfaz.
+   - Visualización clara de origen de la traducción y estado.
+5. **Revisión y control:**
+   - Revisor valida traducciones, deja comentarios o aprueba.
+   - Historial de cambios y auditoría.
+6. **Exportación y consumo:**
+   - Exporta archivos JSON/YAML listos para i18n en el frontend.
+   - Integración directa con el pipeline de CI/CD si se desea.
+
+---
+
+## Sprints y entregas incrementales
+
+### Sprint 1: Estructura base del proyecto
+- Inicializar repo Next.js + TypeScript
+- Configuración básica del proyecto y carpetas
+- Página de bienvenida
+
+### Sprint 2: Creación y edición de copys
+- UI para crear copys y slugs manualmente
+- Validación de unicidad y formato de slug
+
+### Sprint 3: Edición y búsqueda
+- Buscador y filtro de copys/slugs
+- Edición inline
+
+### Sprint 4: Exportación básica
+- Exportar copys a JSON por idioma
+
+### Sprint 5: Gestión de usuarios y roles
+- Registro/login básico
+- Roles: admin, traductor
+
+### Sprint 6: Asignación de tareas de traducción
+- UI para asignar copys a traductores por idioma
+- Vista de tareas pendientes por usuario
+
+### Sprint 7: Traducción asistida (OpenAI)
+- Integración backend proxy seguro para OpenAI
+- Botón de sugerir traducción
+
+### Sprint 8: Flujo de revisión y feedback
+- Estado de traducción: pendiente, traducido, revisado, aprobado
+- Historial de cambios
+
+### Sprint 9: Exportación avanzada y CI/CD
+- Exportación YAML
+- GitHub Actions: lint, test, validación, build y deploy
+
+### Sprint 10: Documentación y ejemplos de integración frontend
+- Docs de integración con i18n
+- Ejemplo de uso en React
+
+---
+
+---
+
+## Alcance
+
+- Importar archivos Excel/CSV con copys y traducciones.
+- Validar y convertir datos a archivos JSON/YAML por idioma.
+- Dashboard para detectar y corregir errores comunes (slugs duplicados, copys sin traducir, inconsistencias, etc.).
+- Edición y búsqueda de copys desde la interfaz.
+- Sugerencia de traducciones automáticas vía OpenAI (ChatGPT).
+- Exportación de archivos de traducción limpios.
+- Control de acceso básico.
+- Integración con CI/CD para validaciones automáticas y despliegue.
+
+---
+
+## Tecnologías
+
+- **Frontend:** Next.js (React) + TypeScript
+- **Backend:** Node.js (API REST para parsing, validaciones y proxy a OpenAI)
+- **Parsing Excel:** Librería `xlsx` o similar
+- **Validación:** Zod/Joi para esquemas y reglas de negocio
+- **UI:** Chakra UI, Material UI o similar
+- **Autenticación:** Google OAuth (opcional)
+- **CI/CD:** GitHub Actions (lint, test, build, deploy)
+- **Despliegue:** Vercel, Netlify o similar
+- **Testing:** Jest + React Testing Library
+
+---
+
+## Estructura de directorios inicial
+
+```
+translation-manager/
+│
+├── README.md
+├── package.json
+├── next.config.js
+├── public/
+├── src/
+│   ├── pages/           # Rutas Next.js
+│   ├── components/      # Componentes UI
+│   ├── utils/           # Utilidades (validaciones, helpers)
+│   ├── services/        # Lógica de import/export, API OpenAI, etc.
+│   ├── api/             # Endpoints backend (import, validación, traducción)
+│   └── types/           # Tipado TypeScript
+├── translations/        # Archivos JSON/YAML generados
+├── .github/
+│   └── workflows/       # CI/CD (lint, test, build, deploy)
+└── ...
+```
+
+---
+
+## Flujos de desarrollo y CI/CD
+
+1. **Desarrollo local:**  
+   - Pull Request → Lint + Test automáticos.
+   - Validación de archivos de traducción en cada push.
+   - Revisión de código por pares.
+
+2. **CI/CD:**  
+   - GitHub Actions:
+     - Linter (ESLint, Prettier)
+     - Tests (Jest)
+     - Validación de archivos de traducción
+     - Build y despliegue automático (Vercel/Netlify)
+
+3. **Despliegue:**  
+   - Preview de cada PR.
+   - Producción tras merge en main.
+
+---
+
+## Primeros pasos
+
+1. Clona el repositorio
+2. Instala dependencias: `npm install`
+3. Arranca el entorno local: `npm run dev`
+
+---
+
+## Integración con i18n en el frontend
+
+La herramienta está diseñada para exportar archivos de traducción en formato JSON plano compatible con las principales librerías i18n de React/Next.js, como `react-i18next` o `next-i18next`. Para integrarlo en el frontend:
+
+1. Instala la librería i18n en tu proyecto frontend:
+   ```bash
+   npm install react-i18next i18next
+   ```
+2. Copia los archivos generados (`es.json`, `en.json`, etc.) en la carpeta de recursos de tu frontend.
+3. Configura i18next para cargar los archivos por idioma.
+4. Usa el hook `useTranslation()` para mostrar los copys en los componentes.
+
+_Ejemplo de uso:_
+```jsx
+import { useTranslation } from 'react-i18next';
+
+function Login() {
+  const { t } = useTranslation();
+  return <h1>{t('login.title')}</h1>;
+}
+```
+
+Más información: [react-i18next docs](https://react.i18next.com/)
+
+---
+
+## Roadmap inicial
+
+1. **Estructura base del proyecto**
+   - Next.js + TypeScript + configuración inicial
+   - Estructura de carpetas y dependencias
+
+2. **Importador de Excel/CSV**
+   - Subida y parsing de archivos
+   - Conversión a estructura interna
+
+3. **Validaciones y dashboard de revisión**
+   - Detección de slugs duplicados, copys vacíos, inconsistencias
+   - Interfaz para revisar y corregir
+
+4. **Edición y búsqueda de copys**
+   - UI para editar, buscar y filtrar traducciones
+
+5. **Integración con API de OpenAI para traducciones sugeridas**
+   - Backend proxy seguro para OpenAI
+   - Botón de "sugerir traducción" en la UI
+
+6. **Exportación a JSON/YAML**
+   - Generación de archivos por idioma compatibles con i18n
+
+7. **Integración CI/CD y despliegue**
+   - GitHub Actions: lint, test, validación, build y deploy
+
+8. **Integración con el frontend (i18n)**
+   - Documentación y ejemplo de uso con `react-i18next` o `next-i18next`
+
+---
+
+## Contribución
+
+- Haz fork y PR para proponer cambios.
+- Sigue las normas de estilo y convenciones del proyecto.
+- Cualquier sugerencia o bug, abre un issue.
+
+---
+
+## Licencia
+
+MIT
