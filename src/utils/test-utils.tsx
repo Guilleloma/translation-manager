@@ -1,0 +1,22 @@
+import React, { ReactElement } from 'react';
+import { render as rtlRender, RenderOptions } from '@testing-library/react';
+import { ChakraProvider, theme } from '@chakra-ui/react';
+
+// Wrapper personalizado con ChakraProvider para pruebas
+const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <ChakraProvider theme={theme}>
+      {children}
+    </ChakraProvider>
+  );
+};
+
+// Función de renderizado personalizada que incluye ChakraProvider
+const render = (
+  ui: ReactElement,
+  options?: Omit<RenderOptions, 'wrapper'>,
+) => rtlRender(ui, { wrapper: AllTheProviders, ...options });
+
+// Re-exportar todo lo demás
+export * from '@testing-library/react';
+export { render };

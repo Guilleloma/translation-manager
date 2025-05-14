@@ -12,6 +12,7 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - **Gestión multilenguaje robusta**: Un mismo slug puede tener diferentes traducciones, una por cada idioma.
 - **Vista de tabla por idiomas**: Visualización clara de todos los copys organizados por slug e idioma.
 - **Creación y edición intuitiva**: Interfaz optimizada para trabajar eficientemente con traducciones.
+- **Detección de conflictos de slug**: Sistema de alerta visual (⚠️) que muestra posibles conflictos en la estructura JSON cuando un slug raíz ('button') colisiona con slugs anidados ('button.crear').
 
 ---
 
@@ -204,9 +205,10 @@ translation-manager/
 
 2. **CI/CD:**  
    - GitHub Actions:
-     - Linter (ESLint, Prettier)
-     - Tests (Jest)
-     - Validación de archivos de traducción
+     - Linter (ESLint, Prettier): `npm run lint`
+     - Tests (Jest): `npm run test`
+     - Validación de archivos de traducción: `npm run validate:json`
+     - Validación completa: `npm run validate` (incluye lint + test + validación JSON)
      - Build y despliegue automático (Vercel/Netlify)
 
 3. **Despliegue:**  
@@ -218,8 +220,9 @@ translation-manager/
 ## Primeros pasos
 
 1. Clona el repositorio
-2. Instala dependencias: `npm install`
+2. Instala dependencias: `npm install --legacy-peer-deps` (necesario por compatibilidad de testing con React 19)
 3. Arranca el entorno local: `npm run dev`
+4. Ejecuta validaciones: `npm run validate`
 
 ---
 
