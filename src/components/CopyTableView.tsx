@@ -212,7 +212,30 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
           ) : (
             groupedCopys.map(group => (
               <Tr key={group.slug}>
-                <Td fontWeight="medium">{group.slug}</Td>
+                <Td fontWeight="medium">
+                  {/* Detectar colisión de slug raíz y prefijo */}
+                  {(() => {
+                    // Buscar si existe algún otro slug que empiece por este slug + '.' (ej: 'button' y 'button.crear')
+                    const hasPrefix = groupedCopys.some(other =>
+                      other.slug !== group.slug &&
+                      (other.slug.startsWith(group.slug + '.') || group.slug.startsWith(other.slug + '.'))
+                    );
+                    if (hasPrefix) {
+                      console.log(`⚠️ Slug ${group.slug} puede causar conflictos al exportar a JSON i18n porque existe como clave raíz y como prefijo de otros slugs.`);
+                      return (
+                        <HStack spacing={1} align="center">
+                          <span>{group.slug}</span>
+                          <Tooltip label="Este slug puede causar conflictos al exportar a JSON i18n porque existe como clave raíz y como prefijo de otros slugs. Revisa la exportación para evitar sobrescribir valores.">
+                            <span style={{ color: '#E9B824', cursor: 'pointer' }}>
+                              ⚠️
+                            </span>
+                          </Tooltip>
+                        </HStack>
+                      );
+                    }
+                    return group.slug;
+                  })()}
+                </Td>
                 
                 {sortedLanguages
                   .filter(lang => showLanguages.includes(lang))

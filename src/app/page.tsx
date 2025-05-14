@@ -271,20 +271,49 @@ export default function Home() {
         dataToExport = copys.filter((c) => c.language === exportLanguage);
       }
       
-      // Crear objeto por idioma
-      const byLanguage: Record<string, Record<string, string>> = {};
+      // Crear objeto anidado por idioma respetando la jerarquía indicada por los puntos en los slugs
+      const byLanguage: Record<string, any> = {};
       
+      // Función auxiliar para crear estructura anidada a partir de paths con puntos
+      const setNestedProperty = (obj: any, path: string[], value: string) => {
+        let current = obj;
+        
+        // Recorremos todos los segmentos del path excepto el último
+        for (let i = 0; i < path.length - 1; i++) {
+          const key = path[i];
+          // Si la propiedad no existe, la creamos como objeto vacío
+          if (!current[key]) {
+            current[key] = {};
+          }
+          // Continuamos recorriendo el objeto anidado
+          current = current[key];
+        }
+        
+        // Último segmento: asignamos el valor
+        const lastKey = path[path.length - 1];
+        current[lastKey] = value;
+      };
+      
+      // Procesar cada copy para construir el objeto anidado
       dataToExport.forEach((copy) => {
         if (!byLanguage[copy.language]) {
           byLanguage[copy.language] = {};
         }
-        byLanguage[copy.language][copy.slug] = copy.text;
+        
+        // Dividir el slug por puntos para crear la estructura anidada
+        const slugParts = copy.slug.split('.');
+        
+        // Crear estructura anidada
+        setNestedProperty(byLanguage[copy.language], slugParts, copy.text);
       });
       
       // Crear blob y descargar
       const blob = new Blob([JSON.stringify(byLanguage, null, 2)], {
         type: "application/json",
       });
+      
+      // Log para debugging
+      console.log('📦 Estructura JSON de exportación:', JSON.stringify(byLanguage, null, 2));
       
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

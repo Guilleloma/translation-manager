@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Table,
   Thead,
@@ -9,7 +9,9 @@ import {
   Badge,
   IconButton,
   HStack,
-  Tooltip
+  Tooltip,
+  Box,
+  Flex
 } from '@chakra-ui/react';
 import { Copy } from '../types/copy';
 
@@ -19,7 +21,31 @@ interface CopyTableProps {
   onEdit: (copy: Copy) => void;
 }
 
-export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit }) => (
+export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit }) => {
+  // Detectar posibles conflictos de slug (slug raíz vs slug con prefijo)
+  // Ejemplo: 'button' vs 'button.crear' causarían conflicto en la estructura JSON
+  const slugConflicts = useMemo(() => {
+    // Extraer todos los slugs únicos
+    const slugs = Array.from(new Set(copys.map(c => c.slug)));
+    const conflictMap: Record<string, boolean> = {};
+    
+    // Detectar conflictos: un slug es prefijo de otro
+    slugs.forEach(slug => {
+      slugs.forEach(otherSlug => {
+        if (slug !== otherSlug && 
+           (otherSlug.startsWith(slug + '.') || slug.startsWith(otherSlug + '.'))) {
+          // Log para debugging
+          console.log(`⚠️ Conflicto de slug detectado en vista lista: "${slug}" con "${otherSlug}"`); 
+          conflictMap[slug] = true;
+          conflictMap[otherSlug] = true;
+        }
+      });
+    });
+    
+    return conflictMap;
+  }, [copys]);
+  
+  return (
   <Table variant="simple" mt={4}>
     <Thead>
       <Tr>
@@ -40,7 +66,19 @@ export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit })
       ) : (
         copys.map(copy => (
           <Tr key={copy.id}>
-            <Td maxW="200px" isTruncated>{copy.slug}</Td>
+            <Td maxW="200px" isTruncated>
+              {/* Mostrar el warning si el slug tiene conflicto */}
+              {slugConflicts[copy.slug] ? (
+                <Flex align="center">
+                  <Box mr={1}>{copy.slug}</Box>
+                  <Tooltip label="Este slug puede causar conflictos al exportar a JSON i18n porque existe como clave raíz y como prefijo de otros slugs. Revisa la exportación para evitar sobrescribir valores.">
+                    <span style={{ color: '#E9B824', cursor: 'pointer' }}>
+                      ⚠️
+                    </span>
+                  </Tooltip>
+                </Flex>
+              ) : copy.slug}
+            </Td>
             <Td maxW="300px" isTruncated>{copy.text}</Td>
             <Td>{copy.language === 'es' ? 'Español' : copy.language === 'en' ? 'Inglés' : copy.language}</Td>
             <Td><Badge colorScheme={getStatusColor(copy.status)}>{copy.status}</Badge></Td>
@@ -72,7 +110,8 @@ export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit })
       )}
     </Tbody>
   </Table>
-);
+  );
+};
 
 function getStatusColor(status: string) {
   switch (status) {
