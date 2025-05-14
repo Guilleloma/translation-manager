@@ -12,15 +12,17 @@ import { slugify } from '../utils/slugify';
 import { Copy } from '../types/copy';
 
 interface CopyFormProps {
-  // Aquí se pasan solo los slugs existentes que ya tienen el mismo idioma seleccionado
-  existingSlugs: string[];
+  // Se pasan todos los copys existentes (excepto el que se está editando)
+  existingCopys: Copy[];
   onSave: (copy: Omit<Copy, 'id' | 'status'>) => void;
   onCancel?: () => void;
   initialValues?: Partial<Copy>;
   isEditing?: boolean;
+  // Notificar cambios de idioma al componente padre
+  onLanguageChange?: (language: string) => void;
 }
 
-export const CopyForm: React.FC<CopyFormProps> = ({ existingSlugs, onSave, onCancel, initialValues = {}, isEditing = false }) => {
+export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCancel, initialValues = {}, isEditing = false, onLanguageChange }) => {
   const [text, setText] = useState(initialValues.text || '');
   const [slug, setSlug] = useState(initialValues.slug || '');
   const [language, setLanguage] = useState(initialValues.language || 'es');
@@ -47,7 +49,7 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingSlugs, onSave, onCan
   useEffect(() => {
     validateSlug(slug);
     // eslint-disable-next-line
-  }, [slug, existingSlugs]);
+  }, [slug, existingCopys, language]);
 
   const validateSlug = (value: string) => {
     if (!value) {
@@ -58,12 +60,18 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingSlugs, onSave, onCan
       setError('Solo minúsculas, números y puntos.');
       return false;
     }
-    // Verificación de duplicados - ahora solo comprueba entre slugs del mismo idioma
-    // Estos ya vienen filtrados desde el componente padre
-    if (existingSlugs.includes(value)) {
-      setError(`El slug '${value}' ya existe para el idioma ${language}.`);
+    
+    // Verificación de duplicados por combinación de slug + idioma
+    // Un mismo slug puede existir en diferentes idiomas, pero no en el mismo idioma
+    const duplicado = existingCopys.some(copy => 
+      copy.slug === value && copy.language === language
+    );
+    
+    if (duplicado) {
+      setError(`El slug '${value}' ya existe para el idioma ${language === 'es' ? 'español' : language === 'en' ? 'inglés' : language}.`);
       return false;
     }
+    
     setError('');
     return true;
   };
@@ -88,7 +96,7 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingSlugs, onSave, onCan
         <Input 
           value={text} 
           onChange={e => setText(e.target.value)} 
-          placeholder={language === 'es' ? "Texto en español" : language === 'en' ? "Text in English" : `Texto (${language})`} 
+          placeholder={language === 'es' ? "Texto en español" : language === 'en' ? "Text in English" : `Texto en ${language}`} 
           required 
         />
       </FormControl>
@@ -104,7 +112,17 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingSlugs, onSave, onCan
       </FormControl>
       <FormControl mb={4}>
         <FormLabel>Idioma</FormLabel>
-        <Select value={language} onChange={e => setLanguage(e.target.value)} required>
+        <Select 
+          value={language} 
+          onChange={e => {
+            const newLanguage = e.target.value;
+            setLanguage(newLanguage);
+            // Notificar al padre del cambio de idioma
+            if (onLanguageChange) {
+              onLanguageChange(newLanguage);
+            }
+          }} 
+          required>
           <option value="es">Español</option>
           <option value="en">Inglés</option>
           {/* Puedes añadir más idiomas aquí */}

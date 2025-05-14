@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Table,
   Thead,
@@ -36,6 +36,7 @@ type GroupedCopy = {
   translations: {
     [language: string]: Copy | null;
   };
+  key?: string; // Clave única para forzar re-render
 };
 
 export const CopyTableView: React.FC<CopyTableViewProps> = ({ 
@@ -46,33 +47,102 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
 }) => {
   const [showLanguages, setShowLanguages] = useState<string[]>(languages);
   
-  // Agrupar copys por slug
-  const groupedCopys = useMemo(() => {
-    const grouped: { [slug: string]: GroupedCopy } = {};
+  // Este efecto es muy importante para debugging - no borrar
+  useEffect(() => {
+    console.group('💼 CopyTableView: MONTADO o ACTUALIZADO');
+    console.log(`ℹ️ Recibidos ${copys.length} copys y ${languages.length} idiomas`);
     
-    // Inicializar con todos los slugs únicos
-    const uniqueSlugs = [...new Set(copys.map(copy => copy.slug))];
+    // Analizar en detalle los copys recibidos
+    console.log('📝 DETALLE DE COPYS RECIBIDOS:');
+    const byLanguage: Record<string, Array<{id: string, slug: string, text: string}>> = {};
+    
+    languages.forEach(lang => {
+      byLanguage[lang] = [];
+    });
+    
+    // Agrupar copys por idioma para mejor visualización
+    copys.forEach(copy => {
+      if (byLanguage[copy.language]) {
+        byLanguage[copy.language].push({
+          id: copy.id,
+          slug: copy.slug,
+          text: copy.text.substring(0, 20) + (copy.text.length > 20 ? '...' : '')
+        });
+      }
+    });
+    
+    // Mostrar resumen por idioma
+    Object.keys(byLanguage).forEach(lang => {
+      console.log(`  - ${lang.toUpperCase()}: ${byLanguage[lang].length} copys`);
+      byLanguage[lang].forEach((copy, idx) => {
+        console.log(`      [${idx+1}] ${copy.slug}: "${copy.text}"`);
+      });
+    });
+    
+    console.groupEnd();
+  }, [copys, languages]);
+  
+  // Agregar un efecto para registrar cambios en showLanguages
+  useEffect(() => {
+    console.log('🌐 IDIOMAS MOSTRADOS:', showLanguages);
+  }, [showLanguages]);
+  
+  // Creamos una key para cada copy basada en sus datos, para detectar cambios reales
+  const getCopyKey = (copy: Copy) => `${copy.id}-${copy.slug}-${copy.language}-${copy.text.substring(0, 10)}`;
+  
+  // Agrupar copys por slug - Implementación completamente rediseñada para evitar bugs
+  // Se calcula desde cero en cada render para garantizar que refleje el estado actual
+  const groupedCopys = useMemo(() => {
+    console.log('==== Recalculando groupedCopys ====');
+    console.log(`Tenemos ${copys.length} copys y ${languages.length} idiomas`);
+    
+    // Step 1: Crear una nueva tabla vacía para evitar referencias antiguas
+    const groupedTable: { [slug: string]: GroupedCopy } = {};
+    
+    // Step 2: Recopilar todos los slugs únicos primero
+    const uniqueSlugs = Array.from(new Set(copys.map(copy => copy.slug)));
+    console.log(`Encontrados ${uniqueSlugs.length} slugs únicos`);
+    
+    // Step 3: Para cada slug, crear una entrada en la tabla y rellenarla
     uniqueSlugs.forEach(slug => {
-      grouped[slug] = {
+      console.log(`Procesando slug: ${slug}`);
+      
+      // Inicializar el grupo con el slug y traducciones vacías
+      groupedTable[slug] = {
         slug,
-        translations: {}
+        translations: {},
+        key: Date.now().toString() + Math.random().toString(36).substring(2, 9) // Clave única para forzar re-render
       };
       
       // Inicializar todos los idiomas como null
       languages.forEach(lang => {
-        grouped[slug].translations[lang] = null;
+        groupedTable[slug].translations[lang] = null;
       });
     });
     
-    // Rellenar con los copys disponibles
+    // Step 4: Rellenar la tabla con los datos de cada copy
     copys.forEach(copy => {
-      if (grouped[copy.slug]) {
-        grouped[copy.slug].translations[copy.language] = copy;
+      if (groupedTable[copy.slug]) {
+        // Asignar el copy al slot correspondiente por idioma
+        groupedTable[copy.slug].translations[copy.language] = copy;
+        console.log(`✅ Asignado correctamente: ${copy.slug} [${copy.language}] = "${copy.text.substring(0, 15)}${copy.text.length > 15 ? '...' : ''}"`); 
+      } else {
+        console.error(`❌ Error: No se encontró el slug "${copy.slug}" en la tabla agrupada`);
       }
     });
     
-    return Object.values(grouped);
-  }, [copys, languages]);
+    // Step 5: Convertir la tabla a un array para renderizado
+    const resultArray = Object.values(groupedTable);
+    console.log(`Resultado final: ${resultArray.length} grupos creados correctamente`);
+    
+    // Validación final - imprimimos un resumen de cada grupo
+    resultArray.forEach(group => {
+      const filledLanguages = Object.keys(group.translations).filter(lang => group.translations[lang] !== null);
+      console.log(`Grupo ${group.slug}: Tiene traducciones en ${filledLanguages.join(', ')}`);
+    });
+    
+    return resultArray;
+  }, [copys, languages]); // Dependencias exactas - solo recalcular cuando estos props cambien
   
   const toggleLanguage = (language: string) => {
     setShowLanguages(prev => 
@@ -196,13 +266,17 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                               key={lang}
                               icon={<span>➕</span>}
                               // Crear nuevo copy con este slug e idioma
-                              onClick={() => onEdit({
-                                id: '', // vacío para que se cree uno nuevo
-                                slug: group.slug,
-                                text: '',
-                                language: lang,
-                                status: 'pendiente'
-                              })}
+                              onClick={() => {
+                                console.log(`🔴 Iniciando creación de nuevo copy para slug "${group.slug}" en idioma "${lang}"`);
+                                // Añadimos una marca temporal para evitar que se pierda entre otros copys
+                                onEdit({
+                                  id: '', // vacío para que se cree uno nuevo
+                                  slug: group.slug,
+                                  text: '',
+                                  language: lang,
+                                  status: 'pendiente'
+                                });
+                              }}
                             >
                               Crear en {lang}
                             </MenuItem>

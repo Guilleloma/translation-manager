@@ -7,6 +7,12 @@
 
 Translation Manager es una herramienta web interna para gestionar traducciones de aplicaciones, eliminando la dependencia de Excel y facilitando la colaboración, revisión y robustez del sistema de copys. El flujo es 100% en la app: puedes crear, editar, traducir y asignar copys y slugs desde la interfaz, sin depender de archivos externos. Permite asignar tareas de traducción a usuarios por idioma, controlar el estado de cada copy y trabajar de forma colaborativa y ágil.
 
+### Características principales
+
+- **Gestión multilenguaje robusta**: Un mismo slug puede tener diferentes traducciones, una por cada idioma.
+- **Vista de tabla por idiomas**: Visualización clara de todos los copys organizados por slug e idioma.
+- **Creación y edición intuitiva**: Interfaz optimizada para trabajar eficientemente con traducciones.
+
 ---
 
 ## Principios y enfoque ágil
@@ -98,38 +104,41 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ✅ Feedback visual con notificaciones
 - ✅ Validación de slugs únicos por idioma (no globalmente)
 - ✅ Vista en formato tabla para traducciones por idioma
+- ✅ Corrección de bugs en gestión multilenguaje
+  - ✅ Solucionado problema de desaparición de traducciones al crear nuevas
+  - ✅ Mejorada la validación de unicidad slug+idioma
 
 ### Sprint 4: Exportación básica ✅
 - ✅ Exportar copys a JSON por idioma
 - ✅ Selección de idioma para exportación
 - ✅ Estructura JSON compatible con i18n
 
-### Sprint 5: Gestión de usuarios y roles
-- Registro/login básico
-- Roles: admin, traductor
-- Panel de administración básico
+### Sprint 5: Gestión de usuarios y roles ⏳
+- ⏳ Registro/login básico
+- ⏳ Roles: admin, traductor
+- ⏳ Panel de administración básico
 
-### Sprint 6: Asignación de tareas de traducción
-- UI para asignar copys a traductores por idioma
-- Notificaciones de tareas pendientes
-- Estado de progreso de traducciones
-- Vista de tareas pendientes por usuario
+### Sprint 6: Asignación de tareas de traducción ⏳
+- ⏳ UI para asignar copys a traductores por idioma
+- ⏳ Notificaciones de tareas pendientes
+- ⏳ Estado de progreso de traducciones
+- ⏳ Vista de tareas pendientes por usuario
 
-### Sprint 7: Traducción asistida (OpenAI)
-- Integración backend proxy seguro para OpenAI
-- Botón de sugerir traducción
+### Sprint 7: Traducción asistida (OpenAI) ⏳
+- ⏳ Integración backend proxy seguro para OpenAI
+- ⏳ Botón de sugerir traducción
 
-### Sprint 8: Flujo de revisión y feedback
-- Estado de traducción: pendiente, traducido, revisado, aprobado
-- Historial de cambios
+### Sprint 8: Flujo de revisión y feedback ⏳
+- ⏳ Estado de traducción: pendiente, traducido, revisado, aprobado
+- ⏳ Historial de cambios
 
-### Sprint 9: Exportación avanzada y CI/CD
-- Exportación YAML
-- GitHub Actions: lint, test, validación, build y deploy
+### Sprint 9: Exportación avanzada y CI/CD ⏳
+- ⏳ Exportación YAML
+- ⏳ GitHub Actions: lint, test, validación, build y deploy
 
-### Sprint 10: Documentación y ejemplos de integración frontend
-- Docs de integración con i18n
-- Ejemplo de uso en React
+### Sprint 10: Documentación y ejemplos de integración frontend ⏳
+- ⏳ Docs de integración con i18n
+- ⏳ Ejemplo de uso en React
 
 ---
 

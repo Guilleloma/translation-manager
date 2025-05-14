@@ -1,4 +1,4 @@
-t# UI Best Practices para Translation Manager
+# UI Best Practices para Translation Manager
 
 ## Consistencia visual y funcional
 
