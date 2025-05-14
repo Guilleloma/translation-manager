@@ -4,6 +4,8 @@ description: Follow the Branch & Main changes process
 
 # Workflow de Control de Versiones
 
+> **REGLA OBLIGATORIA**: Este proceso DEBE completarse antes de comenzar a trabajar en cualquier nueva característica o Sprint.
+
 ## Proceso de trabajo con ramas
 
 1. Cada característica o corrección se desarrolla en su propia rama
