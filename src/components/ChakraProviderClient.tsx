@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import { ChakraProvider, extendTheme } from '@chakra-ui/react';
+import { UserProvider } from '../context/UserContext';
 
 // Configuración para evitar errores de hidración
 const theme = extendTheme({
@@ -30,7 +31,9 @@ export default function ChakraProviderClient({
   
   return (
     <ChakraProvider theme={theme} resetCSS={true}>
-      {children}
+      <UserProvider>
+        {children}
+      </UserProvider>
     </ChakraProvider>
   );
 }

@@ -114,10 +114,12 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ✅ Selección de idioma para exportación
 - ✅ Estructura JSON compatible con i18n
 
-### Sprint 5: Gestión de usuarios y roles ⏳
-- ⏳ Registro/login básico
-- ⏳ Roles: admin, traductor
-- ⏳ Panel de administración básico
+### Sprint 5: Gestión de usuarios y roles ✅
+- ✅ Registro/login básico
+- ✅ Roles: admin, traductor
+- ✅ Panel de administración básico
+- ✅ Protección de rutas basada en roles
+- ✅ Integración de autenticación en la aplicación
 
 ### Sprint 6: Asignación de tareas de traducción ⏳
 - ⏳ UI para asignar copys a traductores por idioma
