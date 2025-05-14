@@ -1,8 +1,17 @@
 # Translation Manager
 
+> **Estado:** Prototipo funcional. Este proyecto es una prueba de concepto centrada en la velocidad de desarrollo y la validación rápida de flujos clave para la gestión de traducciones. Las decisiones técnicas y de alcance están optimizadas para simplicidad y facilidad de iteración.
+
+
 ## Descripción
 
 Translation Manager es una herramienta web interna para gestionar traducciones de aplicaciones, eliminando la dependencia de Excel y facilitando la colaboración, revisión y robustez del sistema de copys. El flujo es 100% en la app: puedes crear, editar, traducir y asignar copys y slugs desde la interfaz, sin depender de archivos externos. Permite asignar tareas de traducción a usuarios por idioma, controlar el estado de cada copy y trabajar de forma colaborativa y ágil.
+
+### Características principales
+
+- **Gestión multilenguaje robusta**: Un mismo slug puede tener diferentes traducciones, una por cada idioma.
+- **Vista de tabla por idiomas**: Visualización clara de todos los copys organizados por slug e idioma.
+- **Creación y edición intuitiva**: Interfaz optimizada para trabajar eficientemente con traducciones.
 
 ---
 
@@ -46,47 +55,90 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 
 ---
 
+## Decisiones de arquitectura y alcance del prototipo
+
+### Objetivo
+- Validar el flujo de creación, edición y exportación de copys/traducciones de forma colaborativa, sin depender de archivos Excel.
+- Entregar valor rápido y obtener feedback sobre la experiencia de usuario y la utilidad de la herramienta.
+
+### Stack Tecnológico
+- **Frontend:** Next.js + TypeScript
+- **UI:** Chakra UI
+- **Estado:** React Context y estado local (sin Redux ni Zustand)
+- **Persistencia:** Datos en memoria (o archivos JSON locales para simular BD si es necesario)
+- **Backend/API:** API routes de Next.js para leer/escribir datos si se requiere persistencia
+- **Testing:** Opcional, solo para lógica crítica (ej: validación de slug)
+- **Despliegue:** Vercel/Netlify (preview automático)
+
+### Justificación de decisiones
+- **Next.js:** Permite desarrollo rápido, rutas API integradas y despliegue sencillo.
+- **Chakra UI:** Componentes accesibles y personalizables, ideal para prototipos.
+- **Sin BD compleja:** Para un prototipo, persistencia en JSON o memoria es suficiente y acelera el desarrollo.
+- **Sin autenticación real:** Los roles se simulan en el frontend, priorizando la funcionalidad principal.
+
+### Límites del prototipo
+- No hay control de acceso real ni gestión de usuarios persistente.
+- Los datos pueden perderse tras recargar si no se usa archivo JSON.
+- La exportación es manual y básica, pensada para validar integración con i18n.
+- El foco está en la experiencia de creación/edición y validación de slugs.
+
+---
+
 ## Sprints y entregas incrementales
 
-### Sprint 1: Estructura base del proyecto
-- Inicializar repo Next.js + TypeScript
-- Configuración básica del proyecto y carpetas
-- Página de bienvenida
+### Sprint 1: Estructura base del proyecto ✅
+- ✅ Inicializar repo Next.js + TypeScript
+- ✅ Configuración básica del proyecto y carpetas
+- ✅ Integración con Chakra UI
 
-### Sprint 2: Creación y edición de copys
-- UI para crear copys y slugs manualmente
-- Validación de unicidad y formato de slug
+### Sprint 2: Creación y edición de copys ✅
+- ✅ UI para crear copys y slugs manualmente
+- ✅ Validación de unicidad y formato de slug
+- ✅ Generación automática de slugs a partir del texto
 
-### Sprint 3: Edición y búsqueda
-- Buscador y filtro de copys/slugs
-- Edición inline
+### Sprint 3: Edición y búsqueda ✅
+- ✅ Buscador por texto y slug
+- ✅ Edición inline de copys existentes
+- ✅ Eliminación de copys
+- ✅ Filtros para visualización
+- ✅ Feedback visual con notificaciones
+- ✅ Validación de slugs únicos por idioma (no globalmente)
+- ✅ Vista en formato tabla para traducciones por idioma
+- ✅ Corrección de bugs en gestión multilenguaje
+  - ✅ Solucionado problema de desaparición de traducciones al crear nuevas
+  - ✅ Mejorada la validación de unicidad slug+idioma
 
-### Sprint 4: Exportación básica
-- Exportar copys a JSON por idioma
+### Sprint 4: Exportación básica ✅
+- ✅ Exportar copys a JSON por idioma
+- ✅ Selección de idioma para exportación
+- ✅ Estructura JSON compatible con i18n
 
-### Sprint 5: Gestión de usuarios y roles
-- Registro/login básico
-- Roles: admin, traductor
+### Sprint 5: Gestión de usuarios y roles ⏳
+- ⏳ Registro/login básico
+- ⏳ Roles: admin, traductor
+- ⏳ Panel de administración básico
 
-### Sprint 6: Asignación de tareas de traducción
-- UI para asignar copys a traductores por idioma
-- Vista de tareas pendientes por usuario
+### Sprint 6: Asignación de tareas de traducción ⏳
+- ⏳ UI para asignar copys a traductores por idioma
+- ⏳ Notificaciones de tareas pendientes
+- ⏳ Estado de progreso de traducciones
+- ⏳ Vista de tareas pendientes por usuario
 
-### Sprint 7: Traducción asistida (OpenAI)
-- Integración backend proxy seguro para OpenAI
-- Botón de sugerir traducción
+### Sprint 7: Traducción asistida (OpenAI) ⏳
+- ⏳ Integración backend proxy seguro para OpenAI
+- ⏳ Botón de sugerir traducción
 
-### Sprint 8: Flujo de revisión y feedback
-- Estado de traducción: pendiente, traducido, revisado, aprobado
-- Historial de cambios
+### Sprint 8: Flujo de revisión y feedback ⏳
+- ⏳ Estado de traducción: pendiente, traducido, revisado, aprobado
+- ⏳ Historial de cambios
 
-### Sprint 9: Exportación avanzada y CI/CD
-- Exportación YAML
-- GitHub Actions: lint, test, validación, build y deploy
+### Sprint 9: Exportación avanzada y CI/CD ⏳
+- ⏳ Exportación YAML
+- ⏳ GitHub Actions: lint, test, validación, build y deploy
 
-### Sprint 10: Documentación y ejemplos de integración frontend
-- Docs de integración con i18n
-- Ejemplo de uso en React
+### Sprint 10: Documentación y ejemplos de integración frontend ⏳
+- ⏳ Docs de integración con i18n
+- ⏳ Ejemplo de uso en React
 
 ---
 
