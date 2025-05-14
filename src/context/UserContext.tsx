@@ -1,0 +1,210 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+/**
+ * User roles enum
+ * Admin: Can manage all content and users
+ * Translator: Can only translate assigned content
+ */
+export enum UserRole {
+  ADMIN = 'admin',
+  TRANSLATOR = 'translator',
+}
+
+/**
+ * User interface definition
+ */
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  languages?: string[]; // Languages the translator can work with
+}
+
+/**
+ * Context interface that defines all user-related operations
+ */
+interface UserContextType {
+  currentUser: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
+  logout: () => void;
+  setCurrentUser: (user: User | null) => void;
+}
+
+// Create context with default values
+const UserContext = createContext<UserContextType>({
+  currentUser: null,
+  isAuthenticated: false,
+  isLoading: true,
+  login: async () => false,
+  register: async () => false,
+  logout: () => {},
+  setCurrentUser: () => {},
+});
+
+// Sample users for the prototype (would be replaced with actual backend in production)
+const MOCK_USERS: User[] = [
+  {
+    id: '1',
+    username: 'admin',
+    email: 'admin@example.com',
+    role: UserRole.ADMIN,
+  },
+  {
+    id: '2',
+    username: 'translator',
+    email: 'translator@example.com',
+    role: UserRole.TRANSLATOR,
+    languages: ['en', 'fr'],
+  },
+];
+
+/**
+ * User Provider Component
+ * Handles authentication state and operations
+ */
+export function UserProvider({ children }: { children: React.ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check for stored user on initial load
+  useEffect(() => {
+    console.log('Checking for stored user session');
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+        console.log('User session restored');
+      } catch (error) {
+        console.error('Failed to parse stored user:', error);
+        localStorage.removeItem('user');
+      }
+    }
+    setIsLoading(false);
+  }, []);
+
+  // Store user in localStorage when it changes
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      console.log(`User session saved: ${currentUser.username}`);
+    } else {
+      localStorage.removeItem('user');
+      console.log('User session cleared');
+    }
+  }, [currentUser]);
+
+  /**
+   * Login function
+   * @param email User email
+   * @param password User password (not validated in prototype)
+   * @returns Success status
+   */
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      console.log(`Login attempt: ${email}`);
+      // Simulate API request delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Find user with matching email
+      const user = MOCK_USERS.find(u => u.email === email);
+      
+      // In a real app, we'd validate the password here
+      if (user) {
+        setCurrentUser(user);
+        console.log(`Login successful: ${user.username}`);
+        return true;
+      }
+      console.log('Login failed: User not found');
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
+  };
+
+  /**
+   * Register function
+   * @param username User display name
+   * @param email User email
+   * @param password User password
+   * @param role User role
+   * @returns Success status
+   */
+  const register = async (
+    username: string, 
+    email: string, 
+    password: string, 
+    role: UserRole
+  ): Promise<boolean> => {
+    try {
+      console.log(`Registration attempt: ${email}, role: ${role}`);
+      // Simulate API request delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Check if user already exists
+      const userExists = MOCK_USERS.some(u => u.email === email);
+      if (userExists) {
+        console.log('Registration failed: Email already exists');
+        return false;
+      }
+      
+      // Create new user
+      const newUser: User = {
+        id: `${MOCK_USERS.length + 1}`,
+        username,
+        email,
+        role,
+      };
+      
+      // In a real app, we would make an API call to create the user
+      // For this prototype, we'll just add it to our mock array
+      MOCK_USERS.push(newUser);
+      
+      // Auto-login the new user
+      setCurrentUser(newUser);
+      console.log(`Registration successful: ${newUser.username}`);
+      return true;
+    } catch (error) {
+      console.error('Registration error:', error);
+      return false;
+    }
+  };
+
+  /**
+   * Logout function
+   */
+  const logout = () => {
+    console.log('Logging out user');
+    setCurrentUser(null);
+  };
+
+  return (
+    <UserContext.Provider
+      value={{
+        currentUser,
+        isAuthenticated: !!currentUser,
+        isLoading,
+        login,
+        register,
+        logout,
+        setCurrentUser,
+      }}
+    >
+      {children}
+    </UserContext.Provider>
+  );
+}
+
+/**
+ * Custom hook for using the user context
+ * @returns UserContext
+ */
+export function useUser() {
+  return useContext(UserContext);
+}
