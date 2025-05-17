@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Heading,
@@ -28,20 +28,21 @@ import {
   useDisclosure,
 } from '@chakra-ui/react';
 import { useUser, UserRole, User } from '../../context/UserContext';
+import LanguageUserSelector from '../assignment/LanguageUserSelector';
 
 /**
  * AdminPanel Component
  * Provides admin functionality for managing users and roles
  */
 export default function AdminPanel() {
-  const { currentUser } = useUser();
+  const { currentUser, users, updateUser } = useUser();
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const cancelRef = React.useRef(null);
+  const cancelRef = React.useRef<HTMLButtonElement>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
-  // Mock users data (in a real app, this would come from API)
-  const [users, setUsers] = useState<User[]>([
+  // Sample users data - these would be loaded from an API in a real app
+  const sampleUsers: User[] = [
     {
       id: '1',
       username: 'admin',
@@ -62,16 +63,26 @@ export default function AdminPanel() {
       role: UserRole.TRANSLATOR,
       languages: ['en', 'it'],
     },
-  ]);
+  ];
+  
+  // Initialize with sample users if no users exist
+  useEffect(() => {
+    if (users.length === 0) {
+      sampleUsers.forEach(user => {
+        updateUser(user.id, user);
+      });
+    }
+  }, []); // Empty dependency array means this runs once on mount
 
   // Function to change user role
   const toggleUserRole = (user: User) => {
+    if (!currentUser) return;
+    
     console.log(`Changing user role: ${user.username} from ${user.role}`);
     const newRole = user.role === UserRole.ADMIN ? UserRole.TRANSLATOR : UserRole.ADMIN;
-    const updatedUsers = users.map(u => 
-      u.id === user.id ? { ...u, role: newRole } : u
-    );
-    setUsers(updatedUsers);
+    
+    // Update the user's role
+    updateUser(user.id, { role: newRole });
     
     // Show success message
     toast({
@@ -85,12 +96,12 @@ export default function AdminPanel() {
 
   // Function to delete user
   const handleDeleteUser = () => {
-    if (!selectedUser) return;
+    if (!selectedUser || !currentUser) return;
     
     console.log(`Attempting to delete user: ${selectedUser.username}`);
     
     // Cannot delete yourself
-    if (selectedUser.id === currentUser?.id) {
+    if (selectedUser.id === currentUser.id) {
       console.error('Cannot delete own user account');
       toast({
         title: 'Operación no permitida',
@@ -103,12 +114,10 @@ export default function AdminPanel() {
       return;
     }
     
-    const updatedUsers = users.filter(u => u.id !== selectedUser.id);
-    setUsers(updatedUsers);
-    
+    // In a real app, we would make an API call to delete the user
     console.log(`User deleted: ${selectedUser.username}`);
     
-    // Show success message
+    // For this prototype, we'll just show a success message
     toast({
       title: 'Usuario eliminado',
       description: `El usuario ${selectedUser.username} ha sido eliminado`,
@@ -142,6 +151,7 @@ export default function AdminPanel() {
         <TabList>
           <Tab>Dashboard</Tab>
           <Tab>Usuarios</Tab>
+          <Tab>Asignación de Idiomas</Tab>
         </TabList>
         
         <TabPanels>
@@ -229,6 +239,11 @@ export default function AdminPanel() {
                 </Tbody>
               </Table>
             </Box>
+          </TabPanel>
+          
+          {/* Language Assignment Tab */}
+          <TabPanel>
+            <LanguageUserSelector />
           </TabPanel>
         </TabPanels>
       </Tabs>
