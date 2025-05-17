@@ -122,13 +122,39 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ✅ Integración de autenticación en la aplicación
 
 ### Sprint 6: Asignación de tareas de traducción 🔄
+- ✅ UI para asignar idiomas a traductores
+  - ✅ Selector de usuarios por idioma
+  - ✅ Interfaz de administración para gestionar permisos
+  - ✅ Visualización clara de asignaciones existentes
 - 🔄 UI para asignar copys a traductores por idioma
-  - Selector de usuarios por idioma
   - Asignación masiva de copys a traductores
-  - Visualización clara de asignaciones existentes
 - 🔄 Notificaciones de tareas pendientes
   - Sistema de notificaciones en tiempo real
   - Indicadores visuales de tareas pendientes
+
+#### Prueba de asignación de idiomas a traductores
+
+Para probar la funcionalidad de asignación de idiomas a traductores:
+
+1. Inicia sesión como administrador
+   - Usuario: admin
+   - Contraseña: admin123
+
+2. Navega a la sección de "Administración" en el menú principal
+
+3. Selecciona la pestaña "Asignación de Idiomas"
+
+4. Para asignar un idioma a un traductor:
+   - Selecciona un idioma del menú desplegable (p. ej., "Español")
+   - Selecciona un usuario con rol de traductor (p. ej., "traductor1")
+   - Haz clic en "Asignar Traductor"
+   - Verás que se agrega a la tabla de asignaciones existentes
+
+5. Para eliminar una asignación:
+   - Haz clic en el botón "Eliminar" junto a la asignación que deseas eliminar
+   - La asignación se eliminará de la tabla
+
+La funcionalidad permite a los administradores gestionar qué traductores pueden trabajar con qué idiomas, lo que facilitará la posterior asignación de tareas específicas de traducción.
 - 🔄 Estado de progreso de traducciones
   - Barra de progreso por idioma/usuario
   - Métricas de traducción (pendientes, completadas, en revisión)

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Heading,
@@ -48,29 +48,39 @@ export default function LanguageUserSelector() {
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
   
-  // Get translators only
-  const translators = users.filter((user: User) => user.role === 'translator');
+  // Get translators only - memoized to prevent unnecessary recalculations
+  const translators = useMemo(() => 
+    users.filter((user: User) => user.role === 'translator'),
+    [users]
+  );
   
   // Initialize assignments based on existing user languages
   useEffect(() => {
-    const initialAssignments: LanguageAssignment[] = [];
-    
-    // For each supported language, find all users assigned to it
-    SUPPORTED_LANGUAGES.forEach(lang => {
-      const usersForLang = translators.filter(
-        (user: User) => user.languages?.includes(lang.code)
-      );
+    // Only run this effect when users or translators change
+    // and only if we haven't initialized assignments yet
+    if (assignments.length === 0) {
+      const initialAssignments: LanguageAssignment[] = [];
       
-      if (usersForLang.length > 0) {
-        initialAssignments.push({
-          language: lang.code,
-          userIds: usersForLang.map((u: User) => u.id)
-        });
+      // For each supported language, find all users assigned to it
+      SUPPORTED_LANGUAGES.forEach(lang => {
+        const usersForLang = translators.filter(
+          (user: User) => user.languages?.includes(lang.code)
+        );
+        
+        if (usersForLang.length > 0) {
+          initialAssignments.push({
+            language: lang.code,
+            userIds: usersForLang.map((u: User) => u.id)
+          });
+        }
+      });
+      
+      // Only update if we have assignments to set
+      if (initialAssignments.length > 0) {
+        setAssignments(initialAssignments);
       }
-    });
-    
-    setAssignments(initialAssignments);
-  }, [users, translators]);
+    }
+  }, [users, translators, assignments.length]);
   
   // Get users assigned to a specific language
   const getAssignedUsers = (languageCode: string): User[] => {
