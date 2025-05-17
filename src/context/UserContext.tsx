@@ -28,23 +28,27 @@ export interface User {
  */
 interface UserContextType {
   currentUser: User | null;
+  users: User[];
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   setCurrentUser: (user: User | null) => void;
+  updateUser: (userId: string, updates: Partial<User>) => void;
 }
 
 // Create context with default values
 const UserContext = createContext<UserContextType>({
   currentUser: null,
+  users: [],
   isAuthenticated: false,
   isLoading: true,
   login: async () => false,
   register: async () => false,
   logout: () => {},
   setCurrentUser: () => {},
+  updateUser: () => {},
 });
 
 // Sample users for the prototype (would be replaced with actual backend in production)
@@ -70,6 +74,7 @@ const MOCK_USERS: User[] = [
  */
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check for stored user on initial load
@@ -184,16 +189,32 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
   };
 
+  // Update user in the users list
+  const updateUser = (userId: string, updates: Partial<User>) => {
+    setUsers(prevUsers => 
+      prevUsers.map(user => 
+        user.id === userId ? { ...user, ...updates } : user
+      )
+    );
+    
+    // Also update currentUser if it's the same user
+    if (currentUser?.id === userId) {
+      setCurrentUser({ ...currentUser, ...updates });
+    }
+  };
+
   return (
     <UserContext.Provider
       value={{
         currentUser,
+        users,
         isAuthenticated: !!currentUser,
         isLoading,
         login,
         register,
         logout,
         setCurrentUser,
+        updateUser,
       }}
     >
       {children}

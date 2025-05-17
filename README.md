@@ -121,11 +121,20 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ✅ Protección de rutas basada en roles
 - ✅ Integración de autenticación en la aplicación
 
-### Sprint 6: Asignación de tareas de traducción ⏳
-- ⏳ UI para asignar copys a traductores por idioma
-- ⏳ Notificaciones de tareas pendientes
-- ⏳ Estado de progreso de traducciones
-- ⏳ Vista de tareas pendientes por usuario
+### Sprint 6: Asignación de tareas de traducción 🔄
+- 🔄 UI para asignar copys a traductores por idioma
+  - Selector de usuarios por idioma
+  - Asignación masiva de copys a traductores
+  - Visualización clara de asignaciones existentes
+- 🔄 Notificaciones de tareas pendientes
+  - Sistema de notificaciones en tiempo real
+  - Indicadores visuales de tareas pendientes
+- 🔄 Estado de progreso de traducciones
+  - Barra de progreso por idioma/usuario
+  - Métricas de traducción (pendientes, completadas, en revisión)
+- 🔄 Vista de tareas pendientes por usuario
+  - Filtros por estado y prioridad
+  - Ordenamiento por fecha de vencimiento o prioridad
 
 ### Sprint 7: Traducción asistida (OpenAI) ⏳
 - ⏳ Integración backend proxy seguro para OpenAI
