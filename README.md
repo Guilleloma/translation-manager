@@ -150,15 +150,24 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ⏳ Interfaz de selección de idioma mejorada
   - ⏳ Validaciones y exportaciones adaptadas a multiples idiomas
 
-### Sprint 9: Flujo de revisión y feedback ⏳
+### Sprint 9: Persistencia y versión Beta ⏳
+- ⏳ Implementación de base de datos MongoDB
+  - ⏳ Modelado de datos para copys/traducciones
+  - ⏳ API para CRUD de copys con persistencia
+  - ⏳ Migración de sistema en memoria a MongoDB
+- ⏳ Despliegue de versión Beta
+  - ⏳ Configuración de entorno de pruebas
+  - ⏳ Documentación para usuarios beta
+
+### Sprint 10: Flujo de revisión y feedback ⏳
 - ⏳ Estado de traducción: pendiente, traducido, revisado, aprobado
 - ⏳ Historial de cambios
 
-### Sprint 10: Exportación avanzada y CI/CD ⏳
+### Sprint 11: Exportación avanzada y CI/CD ⏳
 - ⏳ Exportación YAML
 - ⏳ GitHub Actions: lint, test, validación, build y deploy
 
-### Sprint 11: Documentación y ejemplos de integración frontend ⏳
+### Sprint 12: Documentación y ejemplos de integración frontend ⏳
 - ⏳ Docs de integración con i18n
 - ⏳ Ejemplo de uso en React
 
