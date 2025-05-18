@@ -162,12 +162,31 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 ### Sprint 10: Flujo de revisión y feedback ⏳
 - ⏳ Estado de traducción: pendiente, traducido, revisado, aprobado
 - ⏳ Historial de cambios
+- ⏳ Sistema de roles y permisos
+  - ⏳ Roles definidos (Traductor, Revisor, Admin)
+  - ⏳ Control de acceso basado en roles
+  - ⏳ Flujos de aprobación según roles
 
-### Sprint 11: Exportación avanzada y CI/CD ⏳
+### Sprint 11: Versionado de traducciones ⏳
+- ⏳ Sistema de etiquetado de versiones para traducciones
+  - ⏳ Crear releases de traducciones
+  - ⏳ Comparación entre versiones
+  - ⏳ Restauración de versiones anteriores
+- ⏳ Asociación de traducciones con versiones de producto
+
+### Sprint 12: Métricas y Analytics ⏳
+- ⏳ Dashboard de métricas
+  - ⏳ Progreso de traducción por idioma
+  - ⏳ Tiempo de traducción/revisión
+  - ⏳ Identificación de cuellos de botella
+- ⏳ Reportes de calidad y consistencia
+- ⏳ Exportación de reportes
+
+### Sprint 13: Exportación avanzada y CI/CD ⏳
 - ⏳ Exportación YAML
 - ⏳ GitHub Actions: lint, test, validación, build y deploy
 
-### Sprint 12: Documentación y ejemplos de integración frontend ⏳
+### Sprint 14: Documentación y ejemplos de integración frontend ⏳
 - ⏳ Docs de integración con i18n
 - ⏳ Ejemplo de uso en React
 
