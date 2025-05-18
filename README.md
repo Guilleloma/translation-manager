@@ -132,6 +132,17 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - Sistema de notificaciones en tiempo real
   - Indicadores visuales de tareas pendientes
 
+### Sprint 7: Gestión avanzada de copys y slugs ✅
+- ✅ Creación independiente de copys y slugs
+  - ✅ Añadir copys sin slug asociado inicialmente
+  - ✅ Añadir slugs sin copys asociados inicialmente
+  - ✅ Asignación posterior de copys a slugs existentes
+- Carga masiva de copys/slugs
+  - Importación desde archivo CSV/Excel
+  - Plantilla descargable para facilitar la carga
+  - Validación de datos durante la importación
+  - Visualización previa antes de confirmar la importación
+
 #### Prueba de asignación de idiomas a traductores
 
 Para probar la funcionalidad de asignación de idiomas a traductores:

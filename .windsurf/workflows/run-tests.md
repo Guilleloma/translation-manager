@@ -11,6 +11,8 @@ Este workflow ejecuta todas las validaciones configuradas en el proyecto, incluy
 
 ## Pasos
 
+0. Revisar si los test necesarios están incluidos en el proceso de test y si no lo están, generarlos.
+
 // turbo-all
 1. Ejecutar validación completa:
    ```bash

@@ -22,10 +22,11 @@ import {
   Spacer
 } from "@chakra-ui/react";
 import { v4 as uuidv4 } from "uuid";
-import { Copy } from "../types/copy";
+import { Copy, CopyInput } from "../types/copy";
 import { CopyForm } from "../components/CopyForm";
 import { CopyTable } from "../components/CopyTable";
 import { CopyTableView } from "../components/CopyTableView";
+import { slugify } from "../utils/slugify";
 
 export default function Home() {
   // Estado principal de la aplicación
@@ -92,7 +93,7 @@ export default function Home() {
    * @param data - Datos del copy (slug, texto, idioma)
    * @param isEdit - Indica si es una edición (true) o creación (false)
    */
-  const handleSave = useCallback((data: Omit<Copy, "id" | "status">, isEdit = false) => {
+  const handleSave = useCallback((data: CopyInput, isEdit = false) => {
     console.group('💾 GUARDAR COPY');
     console.log('📡 Datos a guardar:', data);
     console.log('🔄 Modo:', isEdit ? 'EDICIÓN' : 'CREACIÓN');
@@ -105,11 +106,13 @@ export default function Home() {
       console.log('🔥 Copy original:', JSON.stringify(editingCopy));
       
       // Creamos un nuevo objeto con los datos actualizados (inmutabilidad)
+      // Solo actualizamos los campos que han cambiado
       const updatedCopy: Copy = {
         ...editingCopy,  // Mantenemos ID y otras propiedades existentes
-        slug: data.slug,
-        text: data.text,
-        language: data.language
+        slug: data.slug || editingCopy.slug, // Mantener el slug existente si no se proporciona uno nuevo
+        text: data.text || editingCopy.text, // Mantener el texto existente si no se proporciona uno nuevo
+        language: data.language,
+        updatedAt: new Date() // Actualizar la fecha de modificación
       };
       
       console.log('🔺 Copy con cambios:', JSON.stringify(updatedCopy));
@@ -161,9 +164,21 @@ export default function Home() {
       // Limpiar el estado de edición
       setEditingCopy(null);
       
+      // Construir descripción para la notificación
+      const updateDescriptionParts = [];
+      if (data.slug) updateDescriptionParts.push(`Slug: ${data.slug}`);
+      if (data.text) {
+        const textPreview = data.text.length > 20 
+          ? `${data.text.substring(0, 20)}...` 
+          : data.text;
+        updateDescriptionParts.push(`Texto: "${textPreview}"`);
+      }
+      
       toast({
         title: `Copy actualizado en ${data.language === 'es' ? 'español' : data.language === 'en' ? 'inglés' : data.language}`,
-        description: `Slug: ${data.slug} | Texto: "${data.text.substring(0, 20)}${data.text.length > 20 ? '...' : ''}"`,
+        description: updateDescriptionParts.length > 0 
+          ? updateDescriptionParts.join(' | ')
+          : 'Sin detalles adicionales',
         status: "success",
         duration: 3000,
         isClosable: true,
@@ -173,31 +188,55 @@ export default function Home() {
       console.group('✨ CREACIÓN DE NUEVO COPY');
       
       // VERIFICACIÓN PREVIA
-      console.log('🔍 Verificando duplicidad...');
-      const slugExists = copys.some(c => c.slug === data.slug && c.language === data.language);
-      if (slugExists) {
-        console.warn('⚠️ DUPLICADO DETECTADO: Ya existe un copy con mismo slug e idioma');
-        console.groupEnd();
-        console.groupEnd(); // Cerrar grupo principal
-        
+      console.log('🔍 Verificando datos...');
+      
+      // Validar que al menos uno de los dos campos esté presente
+      if (!data.text?.trim() && !data.slug?.trim()) {
+        console.warn('⚠️ ERROR: Se requiere al menos texto o slug');
         toast({
-          title: `Error: Duplicado detectado`,
-          description: `Ya existe un copy con slug "${data.slug}" en ${data.language === 'es' ? 'español' : data.language === 'en' ? 'inglés' : data.language}`,
-          status: "error",
+          title: 'Error: Datos incompletos',
+          description: 'Debes proporcionar al menos un texto o un slug.',
+          status: 'error',
           duration: 3000,
           isClosable: true,
         });
-        
+        console.groupEnd();
         return;
+      }
+      
+      // Si hay un slug, verificar que sea único para este idioma
+      if (data.slug) {
+        const slugExists = copys.some(c => 
+          c.slug === data.slug && 
+          c.language === data.language &&
+          (!editingCopy?.id || c.id !== editingCopy.id) // Excluir el copy actual en edición
+        );
+        
+        if (slugExists) {
+          console.warn('⚠️ DUPLICADO DETECTADO: Ya existe un copy con mismo slug e idioma');
+          console.groupEnd();
+          
+          toast({
+            title: 'Error: Slug duplicado',
+            description: `Ya existe un copy con slug "${data.slug}" en ${data.language === 'es' ? 'español' : data.language === 'en' ? 'inglés' : data.language}`,
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+          
+          return;
+        }
       }
       
       // Crear un nuevo copy con ID único
       const newCopy: Copy = {
         id: uuidv4(), // Generar UUID único
-        status: "pendiente",
-        slug: data.slug,
-        text: data.text,
-        language: data.language
+        status: 'pendiente',
+        slug: data.slug || '', // No generamos slug automáticamente
+        text: data.text || `[Sin texto - ${new Date().toISOString().slice(0, 10)}]`,
+        language: data.language,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       console.log('🆕 Nuevo copy creado:', JSON.stringify(newCopy));
@@ -229,10 +268,23 @@ export default function Home() {
       console.groupEnd();
       
       // Mostrar notificación de éxito
+      const languageName = data.language === 'es' ? 'español' : data.language === 'en' ? 'inglés' : data.language;
+      const descriptionParts = [];
+      
+      if (data.slug) descriptionParts.push(`Slug: ${data.slug}`);
+      if (data.text) {
+        const textPreview = data.text.length > 30 
+          ? `${data.text.substring(0, 30)}...` 
+          : data.text;
+        descriptionParts.push(`Texto: "${textPreview}"`);
+      }
+      
       toast({
-        title: `Copy creado en ${data.language === 'es' ? 'español' : data.language === 'en' ? 'inglés' : data.language}`,
-        description: `Slug: ${data.slug} | Texto: "${data.text.substring(0, 20)}${data.text.length > 20 ? '...' : ''}"`,
-        status: "success",
+        title: `Copy creado en ${languageName}`,
+        description: descriptionParts.length > 0 
+          ? descriptionParts.join(' | ')
+          : 'Sin detalles adicionales',
+        status: 'success',
         duration: 3000,
         isClosable: true,
       });
