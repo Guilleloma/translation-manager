@@ -39,12 +39,7 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
     if (initialValues.language) setLanguage(initialValues.language);
   }, [initialValues]);
 
-  useEffect(() => {
-    if (!slugTouched && text) {
-      setSlug(slugify(text));
-    }
-    // eslint-disable-next-line
-  }, [text]);
+  // Eliminado el efecto que generaba automáticamente el slug a partir del texto
 
   useEffect(() => {
     validateSlug(slug);
@@ -52,24 +47,25 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
   }, [slug, existingCopys, language]);
 
   const validateSlug = (value: string) => {
-    if (!value) {
-      setError('El slug es obligatorio.');
-      return false;
-    }
-    if (!/^[a-z0-9.]+$/.test(value)) {
-      setError('Solo minúsculas, números y puntos.');
-      return false;
-    }
-    
-    // Verificación de duplicados por combinación de slug + idioma
-    // Un mismo slug puede existir en diferentes idiomas, pero no en el mismo idioma
-    const duplicado = existingCopys.some(copy => 
-      copy.slug === value && copy.language === language
-    );
-    
-    if (duplicado) {
-      setError(`El slug '${value}' ya existe para el idioma ${language === 'es' ? 'español' : language === 'en' ? 'inglés' : language}.`);
-      return false;
+    // Si hay un valor, validar su formato
+    if (value) {
+      if (!/^[a-z0-9.]*$/.test(value)) {
+        setError('Solo minúsculas, números y puntos.');
+        return false;
+      }
+      
+      // Verificación de duplicados por combinación de slug + idioma solo si hay un slug
+      // Un mismo slug puede existir en diferentes idiomas, pero no en el mismo idioma
+      const duplicado = existingCopys.some(copy => 
+        copy.slug === value && 
+        copy.language === language &&
+        (!initialValues.id || copy.id !== initialValues.id) // Excluir el copy actual en edición
+      );
+      
+      if (duplicado) {
+        setError(`El slug '${value}' ya existe para el idioma ${language === 'es' ? 'español' : language === 'en' ? 'inglés' : language}.`);
+        return false;
+      }
     }
     
     setError('');
@@ -78,35 +74,55 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateSlug(slug)) return;
-    if (!text) {
-      setError('El texto es obligatorio.');
+    
+    // Validar que al menos uno de los dos campos esté presente
+    if (!text?.trim() && !slug?.trim()) {
+      setError('Debes proporcionar al menos un texto o un slug.');
       return;
     }
-    onSave({ slug, text, language });
-    setText('');
-    setSlug('');
-    setSlugTouched(false);
+    
+    // Validar el slug si está presente
+    if (slug && !validateSlug(slug)) {
+      return;
+    }
+    
+    // Si no hay texto pero hay slug, usamos un texto predeterminado
+    const finalText = text?.trim() || `[${slug}]`;
+    
+    onSave({ 
+      slug: slug || '', 
+      text: finalText,
+      language 
+    });
+    
+    // Resetear solo si no estamos editando
+    if (!isEditing) {
+      setText('');
+      setSlug('');
+      setSlugTouched(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
       <FormControl isInvalid={!!error} mb={2}>
-        <FormLabel>Texto</FormLabel>
+        <FormLabel>Texto {!slug && '(opcional si se proporciona un slug)'}</FormLabel>
         <Input 
           value={text} 
           onChange={e => setText(e.target.value)} 
-          placeholder={language === 'es' ? "Texto en español" : language === 'en' ? "Text in English" : `Texto en ${language}`} 
-          required 
+          placeholder={language === 'es' ? "Texto en español" : language === 'en' ? "Text in English" : `Texto en ${language}`}
+          required={!slug} // Solo requerido si no hay slug
         />
       </FormControl>
       <FormControl isInvalid={!!error} mb={2}>
-        <FormLabel>Slug</FormLabel>
+        <FormLabel>Slug (opcional)</FormLabel>
         <Input
           value={slug}
-          onChange={e => { setSlug(e.target.value); setSlugTouched(true); }}
-          placeholder="slug.auto.generado"
-          required
+          onChange={e => { 
+            setSlug(e.target.value); 
+            setSlugTouched(true); 
+          }}
+          placeholder="Dejar vacío para asignar después"
         />
         {error && <FormErrorMessage>{error}</FormErrorMessage>}
       </FormControl>
@@ -129,7 +145,11 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
         </Select>
       </FormControl>
       <HStack spacing={4}>
-        <Button type="submit" colorScheme="blue" isDisabled={!!error || !text}>
+        <Button 
+          type="submit" 
+          colorScheme="blue" 
+          isDisabled={!!error || (!text?.trim() && !slug?.trim())}
+        >
           Guardar
         </Button>
         {onCancel && (
