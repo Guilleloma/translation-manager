@@ -28,6 +28,7 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
   const [language, setLanguage] = useState(initialValues.language || 'es');
   const [slugTouched, setSlugTouched] = useState(false);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   // Actualizar estados cuando cambian los initialValues (cuando se edita un copy)
   useEffect(() => {
@@ -75,9 +76,12 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Resetear errores
+    setFormError('');
+    
     // Validar que al menos uno de los dos campos esté presente
     if (!text?.trim() && !slug?.trim()) {
-      setError('Debes proporcionar al menos un texto o un slug.');
+      setFormError('Debes proporcionar al menos un texto o un slug.');
       return;
     }
     
@@ -105,26 +109,34 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
 
   return (
     <form onSubmit={handleSubmit}>
-      <FormControl isInvalid={!!error} mb={2}>
+      <FormControl isInvalid={!!error || !!formError} mb={2}>
         <FormLabel>Texto {!slug && '(opcional si se proporciona un slug)'}</FormLabel>
         <Input 
           value={text} 
-          onChange={e => setText(e.target.value)} 
+          onChange={e => {
+            setText(e.target.value);
+            // Limpiar errores al cambiar el valor
+            if (formError) setFormError('');
+          }} 
           placeholder={language === 'es' ? "Texto en español" : language === 'en' ? "Text in English" : `Texto en ${language}`}
           required={!slug} // Solo requerido si no hay slug
         />
       </FormControl>
-      <FormControl isInvalid={!!error} mb={2}>
+      <FormControl isInvalid={!!error || !!formError} mb={2}>
         <FormLabel>Slug (opcional)</FormLabel>
         <Input
           value={slug}
           onChange={e => { 
             setSlug(e.target.value); 
             setSlugTouched(true); 
+            // Limpiar errores al cambiar el valor
+            if (error) setError('');
+            if (formError) setFormError('');
           }}
           placeholder="Dejar vacío para asignar después"
         />
         {error && <FormErrorMessage>{error}</FormErrorMessage>}
+        {formError && <FormErrorMessage>{formError}</FormErrorMessage>}
       </FormControl>
       <FormControl mb={4}>
         <FormLabel>Idioma</FormLabel>
