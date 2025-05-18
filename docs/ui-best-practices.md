@@ -11,6 +11,7 @@
 - **Notificaciones**: Usar el sistema de toast para informar sobre acciones completadas o errores
 - **Estado de carga**: Mostrar indicadores visuales durante operaciones asíncronas
 - **Confirmaciones**: Solicitar confirmación para acciones destructivas (borrar)
+- **Prevención de pérdida de datos**: Advertir y solicitar confirmación explícita antes de sobrescribir o reemplazar datos existentes, especialmente en operaciones masivas
 
 ### Navegación
 - **Jerarquía clara**: Mantener una estructura visual que priorice elementos según su importancia

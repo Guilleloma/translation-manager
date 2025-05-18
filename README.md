@@ -137,55 +137,28 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Añadir copys sin slug asociado inicialmente
   - ✅ Añadir slugs sin copys asociados inicialmente
   - ✅ Asignación posterior de copys a slugs existentes
-- Carga masiva de copys/slugs
-  - Importación desde archivo CSV/Excel
-  - Plantilla descargable para facilitar la carga
-  - Validación de datos durante la importación
-  - Visualización previa antes de confirmar la importación
+- ✅ Carga masiva de copys/slugs
+  - ✅ Importación desde archivo CSV/Excel
+  - ✅ Validación de datos durante la importación
+  - ✅ Visualización previa antes de confirmar la importación
 
-#### Prueba de asignación de idiomas a traductores
-
-Para probar la funcionalidad de asignación de idiomas a traductores:
-
-1. Inicia sesión como administrador
-   - Usuario: admin
-   - Contraseña: admin123
-
-2. Navega a la sección de "Administración" en el menú principal
-
-3. Selecciona la pestaña "Asignación de Idiomas"
-
-4. Para asignar un idioma a un traductor:
-   - Selecciona un idioma del menú desplegable (p. ej., "Español")
-   - Selecciona un usuario con rol de traductor (p. ej., "traductor1")
-   - Haz clic en "Asignar Traductor"
-   - Verás que se agrega a la tabla de asignaciones existentes
-
-5. Para eliminar una asignación:
-   - Haz clic en el botón "Eliminar" junto a la asignación que deseas eliminar
-   - La asignación se eliminará de la tabla
-
-La funcionalidad permite a los administradores gestionar qué traductores pueden trabajar con qué idiomas, lo que facilitará la posterior asignación de tareas específicas de traducción.
-- 🔄 Estado de progreso de traducciones
-  - Barra de progreso por idioma/usuario
-  - Métricas de traducción (pendientes, completadas, en revisión)
-- 🔄 Vista de tareas pendientes por usuario
-  - Filtros por estado y prioridad
-  - Ordenamiento por fecha de vencimiento o prioridad
-
-### Sprint 7: Traducción asistida (OpenAI) ⏳
+### Sprint 8: Traducción asistida (OpenAI) ⏳
 - ⏳ Integración backend proxy seguro para OpenAI
 - ⏳ Botón de sugerir traducción
+- ⏳ Soporte para idiomas adicionales
+  - ⏳ Ampliar soporte actual (Español, Inglés) para incluir: Italiano, Alemán, Francés y Portugués
+  - ⏳ Interfaz de selección de idioma mejorada
+  - ⏳ Validaciones y exportaciones adaptadas a multiples idiomas
 
-### Sprint 8: Flujo de revisión y feedback ⏳
+### Sprint 9: Flujo de revisión y feedback ⏳
 - ⏳ Estado de traducción: pendiente, traducido, revisado, aprobado
 - ⏳ Historial de cambios
 
-### Sprint 9: Exportación avanzada y CI/CD ⏳
+### Sprint 10: Exportación avanzada y CI/CD ⏳
 - ⏳ Exportación YAML
 - ⏳ GitHub Actions: lint, test, validación, build y deploy
 
-### Sprint 10: Documentación y ejemplos de integración frontend ⏳
+### Sprint 11: Documentación y ejemplos de integración frontend ⏳
 - ⏳ Docs de integración con i18n
 - ⏳ Ejemplo de uso en React
 
