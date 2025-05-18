@@ -20,14 +20,24 @@ import {
   VStack,
   HStack,
   Select,
-  Checkbox
+  Checkbox,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
+  useToast
 } from '@chakra-ui/react';
 import { Copy } from '../types/copy';
+import { BulkImportForm } from './BulkImportForm';
 
 interface CopyTableViewProps {
   copys: Copy[];
   onEdit: (copy: Copy) => void;
   onDelete: (id: string) => void;
+  onSave?: (copy: Omit<Copy, 'id' | 'status'>) => void;
   languages?: string[];
 }
 
@@ -43,9 +53,12 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
   copys, 
   onEdit, 
   onDelete,
+  onSave,
   languages = ['es', 'en'] 
 }) => {
   const [showLanguages, setShowLanguages] = useState<string[]>(languages);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
   
   // Este efecto es muy importante para debugging - no borrar
   useEffect(() => {
@@ -164,11 +177,22 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
   }, [languages]);
   
   return (
+    <>
     <Box overflowX="auto">
       <VStack spacing={4} align="stretch" mb={4}>
-        <Text fontSize="lg" fontWeight="bold">
-          Vista de tabla por idiomas
-        </Text>
+        <Flex justifyContent="space-between" alignItems="center">
+          <Text fontSize="lg" fontWeight="bold">
+            Vista de tabla por idiomas
+          </Text>
+          <Button 
+            colorScheme="teal" 
+            leftIcon={<span>📥</span>} 
+            size="sm"
+            onClick={onOpen}
+          >
+            Importar copys masivamente
+          </Button>
+        </Flex>
         
         <HStack spacing={2} flexWrap="wrap">
           <Text fontSize="sm">Mostrar idiomas:</Text>
@@ -331,6 +355,68 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
         {`${groupedCopys.length} slugs únicos (${copys.length} traducciones totales)`}
       </Text>
     </Box>
+
+    {/* Modal para importación masiva */}
+    <Modal isOpen={isOpen} onClose={onClose} size="6xl">
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>Importación masiva de copys</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody pb={6}>
+          <BulkImportForm 
+            existingCopys={copys}
+            onImportComplete={(newCopys) => {
+              // Verificar si tenemos la función onSave para procesar los nuevos copys
+              if (onSave) {
+                try {
+                  // Procesamos todos los copys de una sola vez para mantener consistencia
+                  let importedCount = 0;
+                  
+                  // Importamos todos los copys en un bucle pero sin mostrar notificaciones individuales
+                  newCopys.forEach(newCopy => {
+                    // Añadimos la propiedad isBulkImport para que handleSave no muestre notificaciones individuales
+                    onSave({...newCopy, isBulkImport: true});
+                    importedCount++;
+                  });
+                  
+                  // Mostramos una única notificación al final del proceso
+                  toast({
+                    title: 'Importación masiva completada',
+                    description: `Se han importado ${importedCount} copys correctamente en un solo proceso`,
+                    status: 'success',
+                    duration: 5000,
+                    isClosable: true,
+                  });
+                  
+                  // Cerrar el modal
+                  onClose();
+                } catch (error) {
+                  console.error('Error durante la importación masiva:', error);
+                  toast({
+                    title: 'Error en la importación',
+                    description: 'Ocurrió un error durante el proceso de importación masiva',
+                    status: 'error',
+                    duration: 5000,
+                    isClosable: true,
+                  });
+                }
+              } else {
+                console.error('No se proporcionó onSave en CopyTableView');
+                toast({
+                  title: 'Error en la importación',
+                  description: 'No se pudo completar la importación debido a un error de configuración',
+                  status: 'error',
+                  duration: 5000,
+                  isClosable: true,
+                });
+              }
+            }}
+            onCancel={onClose}
+          />
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+    </>
   );
 };
 

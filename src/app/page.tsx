@@ -92,8 +92,11 @@ export default function Home() {
    * Maneja la creación o actualización de un copy en el sistema
    * @param data - Datos del copy (slug, texto, idioma)
    * @param isEdit - Indica si es una edición (true) o creación (false)
+   * @param suppressNotification - Si es true, no muestra notificaciones (usado en importaciones masivas)
    */
   const handleSave = useCallback((data: CopyInput, isEdit = false) => {
+    // Verificamos si es parte de una importación masiva para suprimir notificaciones
+    const isBulkImport = data.isBulkImport === true;
     console.group('💾 GUARDAR COPY');
     console.log('📡 Datos a guardar:', data);
     console.log('🔄 Modo:', isEdit ? 'EDICIÓN' : 'CREACIÓN');
@@ -154,8 +157,7 @@ export default function Home() {
       });
       
       console.groupEnd(); // Fin del grupo EDICIÓN
-      
-      // Para forzar una actualización de cualquier componente que dependa de copys
+            // Para forzar una actualización de cualquier componente que dependa de copys
       setTimeout(() => {
         console.log('🔁 Forzando actualización de componentes (updateTrigger)');
         setUpdateTrigger(prev => prev + 1);
@@ -164,25 +166,28 @@ export default function Home() {
       // Limpiar el estado de edición
       setEditingCopy(null);
       
-      // Construir descripción para la notificación
-      const updateDescriptionParts = [];
-      if (data.slug) updateDescriptionParts.push(`Slug: ${data.slug}`);
-      if (data.text) {
-        const textPreview = data.text.length > 20 
-          ? `${data.text.substring(0, 20)}...` 
-          : data.text;
-        updateDescriptionParts.push(`Texto: "${textPreview}"`);
+      // Solo mostrar notificación si no es una importación masiva
+      if (!isBulkImport) {
+        // Construir descripción para la notificación
+        const updateDescriptionParts = [];
+        if (data.slug) updateDescriptionParts.push(`Slug: ${data.slug}`);
+        if (data.text) {
+          const textPreview = data.text.length > 20 
+            ? `${data.text.substring(0, 20)}...` 
+            : data.text;
+          updateDescriptionParts.push(`Texto: "${textPreview}"`);
+        }
+        
+        toast({
+          title: `Copy actualizado en ${data.language === 'es' ? 'español' : data.language === 'en' ? 'inglés' : data.language}`,
+          description: updateDescriptionParts.length > 0 
+            ? updateDescriptionParts.join(' | ')
+            : 'Sin detalles adicionales',
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
       }
-      
-      toast({
-        title: `Copy actualizado en ${data.language === 'es' ? 'español' : data.language === 'en' ? 'inglés' : data.language}`,
-        description: updateDescriptionParts.length > 0 
-          ? updateDescriptionParts.join(' | ')
-          : 'Sin detalles adicionales',
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
     } else {
       // === MODO CREACIÓN ===
       console.group('✨ CREACIÓN DE NUEVO COPY');
@@ -279,15 +284,17 @@ export default function Home() {
         descriptionParts.push(`Texto: "${textPreview}"`);
       }
       
-      toast({
-        title: `Copy creado en ${languageName}`,
-        description: descriptionParts.length > 0 
-          ? descriptionParts.join(' | ')
-          : 'Sin detalles adicionales',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      if (!isBulkImport) {
+        toast({
+          title: `Copy creado en ${languageName}`,
+          description: descriptionParts.length > 0 
+            ? descriptionParts.join(' | ')
+            : 'Sin detalles adicionales',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
     }
     
     // Cerrar grupo principal de logs
@@ -497,6 +504,7 @@ export default function Home() {
           copys={filteredCopys}
           onDelete={handleDelete}
           onEdit={handleEdit}
+          onSave={(data) => handleSave(data, false)} // Pasamos handleSave para la importación masiva
           languages={["es", "en"]} // Añade más idiomas aquí según sea necesario
         />
       )}
