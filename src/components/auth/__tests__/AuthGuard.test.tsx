@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '../AuthGuard';
-import { UserRole } from '../../../context/UserContext';
+import { UserRole } from '../../../types/user';
 
 // Mock useUser hook
 jest.mock('../../../context/UserContext', () => ({

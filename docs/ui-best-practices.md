@@ -9,9 +9,27 @@
 
 ### Feedback al usuario
 - **Notificaciones**: Usar el sistema de toast para informar sobre acciones completadas o errores
-- **Estado de carga**: Mostrar indicadores visuales durante operaciones asíncronas
 - **Confirmaciones**: Solicitar confirmación para acciones destructivas (borrar)
 - **Prevención de pérdida de datos**: Advertir y solicitar confirmación explícita antes de sobrescribir o reemplazar datos existentes, especialmente en operaciones masivas
+
+### Estados de carga y feedback visual
+- **Principio fundamental**: No debe existir ningún proceso o acción sin un feedback visual correspondiente
+- **Navegación entre páginas**: Mostrar un indicador de carga visible siempre que se navegue entre rutas diferentes
+  - Usar spinners, barras de progreso o esqueletos de carga (loading skeletons)
+  - El indicador debe ser consistente en toda la aplicación (mismo estilo)
+  - Colocar el indicador en una posición donde sea inmediatamente visible
+- **Interacciones de usuario**: 
+  - Deshabilitar visualmente los botones durante la acción (evita doble clic)
+  - Utilizar estados de hover/focus/active/disabled en todos los elementos interactivos
+  - Mostrar un spinner o texto "Cargando..." en el propio botón
+- **Carga de datos**: 
+  - Usar esqueletos de carga (skeletons) para representar el contenido que se está cargando
+  - Evitar cambios bruscos de layout cuando los datos se cargan
+  - Mostrar mensajes claros cuando no hay datos disponibles
+- **Tiempo de respuesta**: 
+  - Para operaciones que toman <1s: mostrar spinner en el botón
+  - Para operaciones entre 1-3s: mostrar loading overlay o skeleton en la sección afectada
+  - Para operaciones >3s: mostrar barra de progreso o indicador con estimación de tiempo
 
 ### Navegación
 - **Jerarquía clara**: Mantener una estructura visual que priorice elementos según su importancia

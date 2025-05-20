@@ -13,7 +13,8 @@ import {
   useToast,
   Select,
 } from '@chakra-ui/react';
-import { useUser, UserRole } from '../../context/UserContext';
+import { useUser } from '../../context/UserContext';
+import { UserRole } from '../../types/user';
 
 /**
  * RegisterForm Component
