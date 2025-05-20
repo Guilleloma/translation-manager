@@ -55,9 +55,7 @@ export default function TaskNotification({ copys, onViewAssignedTasks }: TaskNot
       const isAssignedToUser = possibleUserIds.includes(copy.assignedTo);
       
       // Verificar si el copy no está ya completado
-      const isPending = copy.status !== 'traducido' && 
-                       copy.status !== 'revisado' && 
-                       copy.status !== 'aprobado';
+      const isPending = copy.status !== 'translated';
       
       return isAssignedToUser && isPending;
     });

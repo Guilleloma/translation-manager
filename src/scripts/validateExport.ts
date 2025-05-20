@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Definir la interfaz Copy directamente aquí para evitar problemas de importación
-type CopyStatus = 'pendiente' | 'traducido' | 'revisado' | 'aprobado';
+type CopyStatus = 'not_assigned' | 'assigned' | 'translated';
 
 interface Copy {
   id: string;
@@ -21,12 +21,12 @@ import { validateCopysForExport, generateJsonPreview, analyzeJsonStructure } fro
 
 // Simular carga de datos (en un entorno real, esto vendría de una BD o archivo)
 const mockCopys: Copy[] = [
-  { id: '1', slug: 'button', text: 'Botón General', language: 'es', status: 'pendiente' },
-  { id: '2', slug: 'button.crear', text: 'Crear', language: 'es', status: 'pendiente' },
-  { id: '3', slug: 'button.cancelar', text: 'Cancelar', language: 'es', status: 'pendiente' },
-  { id: '4', slug: 'button.save', text: 'Save', language: 'en', status: 'pendiente' },
-  { id: '5', slug: 'menu', text: 'Menú', language: 'es', status: 'pendiente' },
-  { id: '6', slug: 'menu.file', text: 'Archivo', language: 'es', status: 'pendiente' },
+  { id: '1', slug: 'button', text: 'Botón General', language: 'es', status: 'not_assigned' },
+  { id: '2', slug: 'button.crear', text: 'Crear', language: 'es', status: 'not_assigned' },
+  { id: '3', slug: 'button.cancelar', text: 'Cancelar', language: 'es', status: 'not_assigned' },
+  { id: '4', slug: 'button.save', text: 'Save', language: 'en', status: 'not_assigned' },
+  { id: '5', slug: 'menu', text: 'Menú', language: 'es', status: 'not_assigned' },
+  { id: '6', slug: 'menu.file', text: 'Archivo', language: 'es', status: 'not_assigned' },
 ];
 
 // Función principal

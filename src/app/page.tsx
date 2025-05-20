@@ -260,7 +260,7 @@ export default function Home() {
       // Crear un nuevo copy con ID único
       const newCopy: Copy = {
         id: uuidv4(), // Generar UUID único
-        status: 'pendiente',
+        status: 'not_assigned',
         slug: data.slug || '', // No generamos slug automáticamente
         text: data.text || `[Sin texto - ${new Date().toISOString().slice(0, 10)}]`,
         language: data.language,

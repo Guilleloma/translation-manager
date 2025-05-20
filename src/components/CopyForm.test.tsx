@@ -9,7 +9,7 @@ describe('CopyForm', () => {
   const mockOnLanguageChange = jest.fn();
   
   const existingCopys: Copy[] = [
-    { id: '1', slug: 'existing.slug', text: 'Existing text', language: 'es', status: 'pendiente' },
+    { id: '1', slug: 'existing.slug', text: 'Existing text', language: 'es', status: 'not_assigned' },
   ];
 
   beforeEach(() => {
@@ -153,7 +153,7 @@ describe('CopyForm', () => {
       slug: 'existing.slug',
       text: 'Existing text',
       language: 'es',
-      status: 'pendiente' as const
+      status: 'not_assigned' as const
     };
 
     render(
