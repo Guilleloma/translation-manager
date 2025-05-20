@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ChakraProviderWrapper } from "../components/ChakraProviderClient";
 import Header from "../components/layout/Header";
+import SeedDataLoader from "../components/SeedDataLoader";
+import LoadingIndicator from "../components/layout/LoadingIndicator";
 import { Box } from "@chakra-ui/react";
 
 const geistSans = Geist({
@@ -29,6 +31,8 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <ChakraProviderWrapper>
+          <SeedDataLoader />
+          <LoadingIndicator />
           <Header />
           <Box as="main" minH="calc(100vh - 64px)">
             {children}

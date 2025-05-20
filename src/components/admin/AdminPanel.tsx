@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Heading,
@@ -18,6 +18,10 @@ import {
   Td,
   Badge,
   Button,
+  SimpleGrid,
+  Card,
+  CardBody,
+  Icon,
   useToast,
   AlertDialog,
   AlertDialogBody,
@@ -26,9 +30,18 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   useDisclosure,
+  Link,
+  Flex,
+  Tooltip,
 } from '@chakra-ui/react';
-import { useUser, UserRole, User } from '../../context/UserContext';
+import { ArrowForwardIcon, SettingsIcon, AtSignIcon, EditIcon, RepeatIcon } from '@chakra-ui/icons';
+import NextLink from 'next/link';
+import { useUser } from '../../context/UserContext';
+import { UserRole, User } from '../../types/user';
 import LanguageUserSelector from '../assignment/LanguageUserSelector';
+import CopyAssignment from '../assignment/CopyAssignment';
+import { Copy } from '../../types/copy';
+import { resetToSeedData } from '../../utils/seedData';
 
 /**
  * AdminPanel Component
@@ -40,6 +53,55 @@ export default function AdminPanel() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = React.useRef<HTMLButtonElement>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [copys, setCopys] = useState<Copy[]>([]);
+  
+  // Cargar copys desde localStorage (en una app real, esto sería una API)
+  useEffect(() => {
+    console.log('🔄 Cargando copys desde localStorage para panel de administración...');
+    
+    const storedCopys = localStorage.getItem('copys');
+    if (storedCopys) {
+      try {
+        const parsedCopys = JSON.parse(storedCopys);
+        setCopys(parsedCopys);
+        console.log(`✅ Copys cargados correctamente: ${parsedCopys.length}`);
+      } catch (error) {
+        console.error('❌ Error al cargar copys:', error);
+        setCopys([]);
+      }
+    } else {
+      console.log('⚠️ No se encontraron copys en localStorage');
+    }
+  }, []);
+  
+  // Función para actualizar un copy
+  const updateCopy = (copyId: string, updates: Partial<Copy>) => {
+    console.log(`📝 Actualizando copy ${copyId}:`, updates);
+    
+    setCopys(prevCopys => {
+      const updatedCopys = prevCopys.map(copy => {
+        if (copy.id === copyId) {
+          return { ...copy, ...updates };
+        }
+        return copy;
+      });
+      
+      // En una app real, esto sería una llamada a API
+      // Por ahora, guardamos en localStorage
+      localStorage.setItem('copys', JSON.stringify(updatedCopys));
+      
+      return updatedCopys;
+    });
+    
+    // Mensaje de éxito
+    toast({
+      title: 'Copy actualizado',
+      description: 'Se ha actualizado la asignación del copy',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
   
   // Sample users data - these would be loaded from an API in a real app
   const sampleUsers: User[] = [
@@ -145,11 +207,37 @@ export default function AdminPanel() {
 
   return (
     <Box>
-      <Heading size="lg" mb={6}>Panel de Administración</Heading>
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">Panel de Administración</Heading>
+        
+        <Tooltip label="Restaurar datos de prueba para demostraciones">
+          <Button
+            size="sm"
+            colorScheme="blue"
+            variant="outline"
+            leftIcon={<RepeatIcon />}
+            onClick={() => {
+              resetToSeedData();
+              // Forzar recarga de la página para ver los cambios
+              window.location.reload();
+              toast({
+                title: 'Datos restaurados',
+                description: 'Se han restaurado los datos de prueba para demostraciones',
+                status: 'info',
+                duration: 3000,
+                isClosable: true,
+              });
+            }}
+          >
+            Restaurar datos de prueba
+          </Button>
+        </Tooltip>
+      </Flex>
       
       <Tabs variant="enclosed">
         <TabList>
           <Tab>Dashboard</Tab>
+          <Tab>Asignación de Copys</Tab>
           <Tab>Usuarios</Tab>
           <Tab>Asignación de Idiomas</Tab>
         </TabList>
@@ -177,6 +265,14 @@ export default function AdminPanel() {
                 </Box>
               </Box>
             </Box>
+          </TabPanel>
+          
+          {/* Copy Assignment Tab */}
+          <TabPanel>
+            <CopyAssignment 
+              copys={copys} 
+              updateCopy={updateCopy} 
+            />
           </TabPanel>
           
           {/* Users Tab */}

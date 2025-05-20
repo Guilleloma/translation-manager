@@ -17,10 +17,13 @@ import {
   Container,
   Avatar,
   Badge,
+  HStack,
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
-import { useUser, UserRole } from '../../context/UserContext';
+import { useUser } from '../../context/UserContext';
+import { UserRole } from '../../types/user';
 import { useRouter } from 'next/navigation';
+import TaskNotification from '../notifications/TaskNotification';
 
 /**
  * Header Component
@@ -72,6 +75,21 @@ export default function Header() {
                     <Link as={NextLink} href="/admin" _hover={{ textDecoration: 'none' }}>
                       <Button variant="ghost">Admin</Button>
                     </Link>
+                  )}
+                  
+                  {/* Show translator tasks link for translators */}
+                  {currentUser?.role === UserRole.TRANSLATOR && (
+                    <Link as={NextLink} href="/translator-tasks" _hover={{ textDecoration: 'none' }}>
+                      <Button variant="ghost">Mis Tareas</Button>
+                    </Link>
+                  )}
+                  
+                  {/* Notification component - only for translators */}
+                  {currentUser?.role === UserRole.TRANSLATOR && (
+                    <TaskNotification 
+                      copys={[]}
+                      onViewAssignedTasks={() => router.push('/translator-tasks')}
+                    />
                   )}
                   
                   <Menu>

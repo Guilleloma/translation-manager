@@ -40,6 +40,30 @@ export default function Home() {
   const [updateTrigger, setUpdateTrigger] = useState(0); // Nuevo estado para forzar actualizaciones
   const toast = useToast();
 
+  // Cargar copys desde localStorage cuando el componente se monta
+  useEffect(() => {
+    console.log('🔄 Cargando copys desde localStorage...');
+    const storedCopys = localStorage.getItem('copys');
+    if (storedCopys) {
+      try {
+        const parsedCopys = JSON.parse(storedCopys);
+        console.log(`✅ Cargados ${parsedCopys.length} copys desde localStorage`);
+        setCopys(parsedCopys);
+      } catch (error) {
+        console.error('Error al cargar copys:', error);
+        toast({
+          title: "Error al cargar datos",
+          description: "No se pudieron cargar los copys almacenados",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } else {
+      console.log('⚠️ No hay copys almacenados en localStorage');
+    }
+  }, [toast]);
+
   // DEBUG: Mostrar estado cuando cambia
   useEffect(() => {
     console.group('🔍 DEPURACIÓN: ESTADO ACTUAL DE COPYS');

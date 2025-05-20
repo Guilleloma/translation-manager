@@ -121,16 +121,25 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ✅ Protección de rutas basada en roles
 - ✅ Integración de autenticación en la aplicación
 
-### Sprint 6: Asignación de tareas de traducción 🔄
+### Sprint 6: Asignación de tareas de traducción y datos de prueba ✅
 - ✅ UI para asignar idiomas a traductores
   - ✅ Selector de usuarios por idioma
   - ✅ Interfaz de administración para gestionar permisos
-  - ✅ Visualización clara de asignaciones existentes
-- 🔄 UI para asignar copys a traductores por idioma
-  - Asignación masiva de copys a traductores
-- 🔄 Notificaciones de tareas pendientes
-  - Sistema de notificaciones en tiempo real
-  - Indicadores visuales de tareas pendientes
+  - ✅ Soporte para múltiples asignaciones de idiomas a un mismo traductor
+- ✅ Asignación masiva de copys a traductores
+  - ✅ Selección de copys pendientes por idioma
+  - ✅ Filtros y búsqueda para asignar tareas
+  - ✅ Interfaz integrada como pestaña en el panel de administración
+- ✅ Sistema de notificaciones para traductores
+  - ✅ Badge indicador de tareas pendientes en el encabezado
+  - ✅ Vista resumida de tareas agrupadas por idioma
+  - ✅ Acceso rápido a todas las tareas pendientes
+- ✅ Sistema de datos de prueba automatizado
+  - ✅ Carga automática de datos semilla para demos y pruebas
+  - ✅ Múltiples casuísticas de copys (con/sin slug, diferentes estados, etc.)
+  - ✅ Función para restaurar datos de prueba con un clic
+  - ✅ Documentación detallada para probar todas las funcionalidades
+  - ✅ Dashboard de tareas para traductores
 
 ### Sprint 7: Gestión avanzada de copys y slugs ✅
 - ✅ Creación independiente de copys y slugs

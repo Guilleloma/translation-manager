@@ -12,7 +12,8 @@ import {
   Flex,
   Avatar,
 } from '@chakra-ui/react';
-import { useUser, UserRole } from '../../context/UserContext';
+import { useUser } from '../../context/UserContext';
+import { UserRole } from '../../types/user';
 import { useRouter } from 'next/navigation';
 
 /**

@@ -1,27 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-/**
- * User roles enum
- * Admin: Can manage all content and users
- * Translator: Can only translate assigned content
- */
-export enum UserRole {
-  ADMIN = 'admin',
-  TRANSLATOR = 'translator',
-}
-
-/**
- * User interface definition
- */
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  role: UserRole;
-  languages?: string[]; // Languages the translator can work with
-}
+import { User, UserRole } from '../types/user';
 
 /**
  * Context interface that defines all user-related operations
@@ -51,20 +31,34 @@ const UserContext = createContext<UserContextType>({
   updateUser: () => {},
 });
 
-// Sample users for the prototype (would be replaced with actual backend in production)
+// Usuarios de ejemplo para el prototipo (sería reemplazado por una API real en producción)
 const MOCK_USERS: User[] = [
   {
-    id: '1',
-    username: 'admin',
+    id: 'admin-1',
+    username: 'Admin Demo',
     email: 'admin@example.com',
     role: UserRole.ADMIN,
   },
   {
-    id: '2',
-    username: 'translator',
+    id: 'translator-1',
+    username: 'Traductor EN-FR',
     email: 'translator@example.com',
     role: UserRole.TRANSLATOR,
     languages: ['en', 'fr'],
+  },
+  {
+    id: 'translator-2',
+    username: 'María García',
+    email: 'maria@example.com',
+    role: UserRole.TRANSLATOR,
+    languages: ['es', 'it'],
+  },
+  {
+    id: 'translator-3',
+    username: 'John Smith',
+    email: 'john@example.com',
+    role: UserRole.TRANSLATOR,
+    languages: ['en', 'de'],
   },
 ];
 
