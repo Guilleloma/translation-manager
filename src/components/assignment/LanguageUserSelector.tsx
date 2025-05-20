@@ -54,32 +54,37 @@ export default function LanguageUserSelector() {
     [users]
   );
   
-  // Initialize assignments based on existing user languages
+  // Initialize assignments based on existing user languages - siempre usar todos los hooks, incluso si no hay usuarios
   useEffect(() => {
-    // Only run this effect when users or translators change
-    // and only if we haven't initialized assignments yet
-    if (assignments.length === 0) {
-      const initialAssignments: LanguageAssignment[] = [];
-      
-      // For each supported language, find all users assigned to it
-      SUPPORTED_LANGUAGES.forEach(lang => {
-        const usersForLang = translators.filter(
-          (user: User) => user.languages?.includes(lang.code)
-        );
+    // Crear una función segura para inicializar asignaciones que siempre se ejecute
+    const initializeAssignments = () => {
+      // Solo inicializar si no hay asignaciones existentes
+      if (assignments.length === 0 && translators.length > 0) {
+        const initialAssignments: LanguageAssignment[] = [];
         
-        if (usersForLang.length > 0) {
-          initialAssignments.push({
-            language: lang.code,
-            userIds: usersForLang.map((u: User) => u.id)
-          });
+        // For each supported language, find all users assigned to it
+        SUPPORTED_LANGUAGES.forEach(lang => {
+          const usersForLang = translators.filter(
+            (user: User) => user.languages?.includes(lang.code)
+          );
+          
+          if (usersForLang.length > 0) {
+            initialAssignments.push({
+              language: lang.code,
+              userIds: usersForLang.map((u: User) => u.id)
+            });
+          }
+        });
+        
+        // Only update if we have assignments to set
+        if (initialAssignments.length > 0) {
+          setAssignments(initialAssignments);
         }
-      });
-      
-      // Only update if we have assignments to set
-      if (initialAssignments.length > 0) {
-        setAssignments(initialAssignments);
       }
-    }
+    };
+    
+    // Llamar a la función siempre, incluso si no hay usuarios
+    initializeAssignments();
   }, [users, translators, assignments.length]);
   
   // Get users assigned to a specific language
@@ -92,13 +97,17 @@ export default function LanguageUserSelector() {
       .filter((user): user is User => user !== undefined);
   };
   
-  // Get users not assigned to any language yet
+  // Get users not assigned to the currently selected language yet
   const getUnassignedUsers = (): User[] => {
-    const assignedUserIds = new Set(
-      assignments.flatMap(a => a.userIds)
-    );
+    // Si no hay idioma seleccionado, no mostrar usuarios
+    if (!selectedLanguage) return [];
     
-    return translators.filter((user: User) => !assignedUserIds.has(user.id));
+    // Obtener los usuarios ya asignados a este idioma específico
+    const assignment = assignments.find(a => a.language === selectedLanguage);
+    const usersAssignedToLanguage = assignment?.userIds || [];
+    
+    // Filtrar traductores que no estén ya asignados a este idioma específico
+    return translators.filter((user: User) => !usersAssignedToLanguage.includes(user.id));
   };
   
   // Handle adding a user to a language

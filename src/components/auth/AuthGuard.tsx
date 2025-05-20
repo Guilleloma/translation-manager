@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useUser, UserRole } from '../../context/UserContext';
+import { useUser } from '../../context/UserContext';
+import { UserRole } from '../../types/user';
 import { useRouter, usePathname } from 'next/navigation';
 import { Box, Spinner, Text, Center } from '@chakra-ui/react';
 

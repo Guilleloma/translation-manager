@@ -4,7 +4,7 @@ import React from 'react';
 import { Container } from '@chakra-ui/react';
 import AdminPanel from '../../components/admin/AdminPanel';
 import AuthGuard from '../../components/auth/AuthGuard';
-import { UserRole } from '../../context/UserContext';
+import { UserRole } from '../../types/user';
 
 /**
  * Admin Page

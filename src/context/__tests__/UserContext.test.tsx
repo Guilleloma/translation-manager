@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { UserProvider, useUser, UserRole } from '../UserContext';
+import { UserProvider, useUser } from '../UserContext';
+import { UserRole } from '../../types/user';
 
 // Mock for localStorage
 const localStorageMock = (() => {

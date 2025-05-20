@@ -1,4 +1,4 @@
-export type CopyStatus = 'pendiente' | 'traducido' | 'revisado' | 'aprobado';
+export type CopyStatus = 'pendiente' | 'assigned' | 'traducido' | 'revisado' | 'aprobado';
 
 export interface CopyInput {
   slug?: string;
@@ -16,4 +16,8 @@ export interface Copy extends Omit<CopyInput, 'slug' | 'text'> {
   status: CopyStatus;
   createdAt?: Date;
   updatedAt?: Date;
+  // Propiedades para asignación y seguimiento
+  assignedTo?: string; // ID del traductor asignado
+  assignedAt?: Date;   // Fecha de asignación
+  completedAt?: Date;  // Fecha en que se completó la traducción
 }
