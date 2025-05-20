@@ -77,17 +77,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Check for stored user on initial load
   useEffect(() => {
     console.log('Checking for stored user session');
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setCurrentUser(JSON.parse(storedUser));
-        console.log('User session restored');
-      } catch (error) {
-        console.error('Failed to parse stored user:', error);
-        localStorage.removeItem('user');
+    // Asegurarnos que isLoading sea true al inicio
+    setIsLoading(true);
+    
+    // Simular un pequeño retraso para asegurarnos de que el spinner se muestre
+    setTimeout(() => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setCurrentUser(JSON.parse(storedUser));
+          console.log('User session restored');
+        } catch (error) {
+          console.error('Failed to parse stored user:', error);
+          localStorage.removeItem('user');
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    }, 300); // Pequeño retraso para asegurar que se muestre el feedback visual
   }, []);
 
   // Store user in localStorage when it changes
@@ -110,8 +116,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       console.log(`Login attempt: ${email}`);
-      // Simulate API request delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setIsLoading(true); // Establecer estado de carga al inicio del proceso
+      
+      // Simular una carga de API con un retraso más visible
+      console.log('Starting login API call');
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       // Find user with matching email
       const user = MOCK_USERS.find(u => u.email === email);
@@ -120,12 +129,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         setCurrentUser(user);
         console.log(`Login successful: ${user.username}`);
+        setIsLoading(false); // Desactivar estado de carga al completar exitosamente
         return true;
       }
       console.log('Login failed: User not found');
+      setIsLoading(false); // Desactivar estado de carga incluso en caso de error
       return false;
     } catch (error) {
       console.error('Login error:', error);
+      setIsLoading(false); // Desactivar estado de carga en caso de excepción
       return false;
     }
   };

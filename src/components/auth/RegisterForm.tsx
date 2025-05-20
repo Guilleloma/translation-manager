@@ -47,25 +47,32 @@ export default function RegisterForm({ onSuccess }: { onSuccess?: () => void }) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    // Inmediatamente mostrar estado de carga
+    setIsLoading(true);
+    console.log('Registration process started, showing loading state');
     
     // Validate form
     if (!isUsernameValid()) {
       setError('El nombre de usuario debe tener al menos 3 caracteres');
+      setIsLoading(false);
       return;
     }
     
     if (!isEmailValid()) {
       setError('Por favor, introduce un email válido');
+      setIsLoading(false);
       return;
     }
     
     if (!isPasswordValid()) {
       setError('La contraseña debe tener al menos 6 caracteres');
+      setIsLoading(false);
       return;
     }
     
     if (!doPasswordsMatch()) {
       setError('Las contraseñas no coinciden');
+      setIsLoading(false);
       return;
     }
     
