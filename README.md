@@ -200,22 +200,38 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ⏳ Feedback visual para traducciones automáticas
 - ⏳ Historial de sugerencias de traducción
 
-### Sprint 14: Exportación a Google Sheets ⏳
-- ⏳ Exportación en formato compatible con Google Sheets
-  - ⏳ Estructura con columnas: slug, en_GB, es_ES, it_IT, en_US, de_DE, fr_FR, pt_PT, pt_BR
-  - ⏳ Opciones de configuración para seleccionar idiomas a incluir
-  - ⏳ Exportación directa a archivo CSV
-  - ⏳ Instrucciones para importar a Google Sheets
-- ⏳ Vista previa de la estructura de exportación
-- ⏳ Filtros para exportar solo slugs específicos
+### Sprint 14: Exportación a Google Sheets ✅
+- ✅ Exportación en formato compatible con Google Sheets
+  - ✅ Estructura con columnas: slug, en_GB, es_ES, it_IT, en_US, de_DE, fr_FR, pt_PT, pt_BR
+  - ✅ Exportación directa a archivo CSV
+  - ✅ Documentación con instrucciones para importar a Google Sheets
+- ⏳ Mejoras pendientes para futuras iteraciones:
+  - ⏳ Vista previa de la estructura de exportación
+  - ⏳ Filtros para exportar solo slugs específicos
+  - ⏳ Opciones avanzadas para seleccionar múltiples idiomas a incluir
 
 ### Sprint 15: Exportación avanzada y CI/CD ⏳
 - ⏳ Exportación YAML
 - ⏳ GitHub Actions: lint, test, validación, build y deploy
 
-### Sprint 14: Documentación y ejemplos de integración frontend ⏳
+### Sprint 16: Documentación y ejemplos de integración frontend ⏳
 - ⏳ Docs de integración con i18n
 - ⏳ Ejemplo de uso en React
+
+### Sprint 17: API REST para integración con otros servicios ⏳
+- ⏳ Endpoints REST para consumo de traducciones
+  - ⏳ GET /api/translations - Obtener todas las traducciones (con filtros)
+  - ⏳ GET /api/translations/:slug - Obtener traducciones por slug
+  - ⏳ GET /api/translations/language/:lang - Obtener traducciones por idioma
+- ⏳ Autenticación y autorización para API
+  - ⏳ Sistema de API keys para servicios
+  - ⏳ Control de acceso granular (lectura/escritura)
+- ⏳ Documentación OpenAPI/Swagger
+  - ⏳ Interfaz interactiva para probar endpoints
+  - ⏳ Ejemplos de integración en diferentes lenguajes
+- ⏳ Webhooks para notificaciones de cambios
+  - ⏳ Notificaciones de nuevas traducciones
+  - ⏳ Eventos de actualización para integración con CI/CD
 
 ---
 
