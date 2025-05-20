@@ -36,8 +36,8 @@ export default function Header() {
   // Handle logout
   const handleLogout = () => {
     console.log('Logging out user');
-    logout();
-    router.push('/');
+    // Pass router navigation as callback to prevent hooks error
+    logout(() => router.push('/'));
   };
 
   return (

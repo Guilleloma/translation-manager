@@ -29,7 +29,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      {/* suppressHydrationWarning prevents errors from browser extensions that modify the DOM */}
+      <body 
+        className={`${geistSans.variable} ${geistMono.variable}`} 
+        suppressHydrationWarning 
+      >
         <ChakraProviderWrapper>
           <SeedDataLoader />
           <LoadingIndicator />

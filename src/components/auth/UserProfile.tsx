@@ -27,15 +27,17 @@ export default function UserProfile() {
 
   // Handle logout
   const handleLogout = () => {
-    logout();
-    toast({
-      title: 'Sesión cerrada',
-      description: 'Has cerrado sesión correctamente',
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+    // Use callback to ensure state updates complete before navigation
+    logout(() => {
+      toast({
+        title: 'Sesión cerrada',
+        description: 'Has cerrado sesión correctamente',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+      router.push('/');
     });
-    router.push('/');
   };
 
   // If no user is logged in, show nothing or a login button

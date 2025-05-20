@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UserProvider, useUser } from '../UserContext';
@@ -33,15 +33,23 @@ const TestComponent = () => {
   const { 
     currentUser, 
     isAuthenticated, 
+    isLoggingOut,
     login, 
     logout, 
     register 
   } = useUser();
+  const [callbackExecuted, setCallbackExecuted] = useState(false);
 
   return (
     <div>
       <div data-testid="auth-status">
         {isAuthenticated ? 'Authenticated' : 'Not authenticated'}
+      </div>
+      <div data-testid="logout-status">
+        {isLoggingOut ? 'Logging out' : 'Not logging out'}
+      </div>
+      <div data-testid="callback-status">
+        {callbackExecuted ? 'Callback executed' : 'Callback not executed'}
       </div>
       {currentUser && (
         <div data-testid="user-info">
@@ -56,8 +64,17 @@ const TestComponent = () => {
       }>
         Register
       </button>
-      <button data-testid="logout-button" onClick={logout}>
+      <button 
+        data-testid="logout-button" 
+        onClick={() => logout()}
+      >
         Logout
+      </button>
+      <button 
+        data-testid="logout-with-callback-button" 
+        onClick={() => logout(() => setCallbackExecuted(true))}
+      >
+        Logout with callback
       </button>
     </div>
   );
@@ -161,6 +178,45 @@ describe('UserContext', () => {
 
     // Verify localStorage was cleared
     expect(localStorageMock.removeItem).toHaveBeenCalledWith('user');
+  });
+
+  it('can logout a user with callback', async () => {
+    render(
+      <UserProvider>
+        <TestComponent />
+      </UserProvider>
+    );
+
+    // Login first
+    await act(async () => {
+      userEvent.click(screen.getByTestId('login-button'));
+    });
+
+    // Verify login worked
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
+    });
+
+    // Verify initial state of callback
+    expect(screen.getByTestId('callback-status')).toHaveTextContent('Callback not executed');
+    
+    // Click logout with callback button
+    await act(async () => {
+      userEvent.click(screen.getByTestId('logout-with-callback-button'));
+    });
+
+    // First, isLoggingOut should be true
+    await waitFor(() => {
+      expect(screen.getByTestId('logout-status')).toHaveTextContent('Logging out');
+    });
+
+    // Then verification that logout worked and callback executed
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('Not authenticated');
+      expect(screen.queryByTestId('user-info')).not.toBeInTheDocument();
+      expect(screen.getByTestId('callback-status')).toHaveTextContent('Callback executed');
+      expect(screen.getByTestId('logout-status')).toHaveTextContent('Not logging out');
+    }, { timeout: 1000 });
   });
 
   it('restores user from localStorage on mount', async () => {
