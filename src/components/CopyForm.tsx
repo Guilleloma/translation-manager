@@ -118,7 +118,15 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
             // Limpiar errores al cambiar el valor
             if (formError) setFormError('');
           }} 
-          placeholder={language === 'es' ? "Texto en español" : language === 'en' ? "Text in English" : `Texto en ${language}`}
+          placeholder={
+            language === 'es' ? "Texto en español" : 
+            language === 'en' ? "Text in English" : 
+            language === 'pt' ? "Texto em Português" :
+            language === 'fr' ? "Texte en Français" :
+            language === 'it' ? "Testo in Italiano" :
+            language === 'de' ? "Text auf Deutsch" :
+            `Texto en ${language}`
+          }
           required={!slug} // Solo requerido si no hay slug
         />
       </FormControl>
@@ -153,7 +161,10 @@ export const CopyForm: React.FC<CopyFormProps> = ({ existingCopys, onSave, onCan
           required>
           <option value="es">Español</option>
           <option value="en">Inglés</option>
-          {/* Puedes añadir más idiomas aquí */}
+          <option value="pt">Portugués</option>
+          <option value="fr">Francés</option>
+          <option value="it">Italiano</option>
+          <option value="de">Alemán</option>
         </Select>
       </FormControl>
       <HStack spacing={4}>
