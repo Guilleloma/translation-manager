@@ -486,6 +486,7 @@ export default function Home() {
         <Spacer />
         
         <HStack spacing={3}>
+          {/* Selector de idiomas para exportación - Incluye todos los idiomas soportados */}
           <Select 
             value={exportLanguage} 
             onChange={(e) => setExportLanguage(e.target.value)}
@@ -495,6 +496,10 @@ export default function Home() {
             <option value="all">Todos</option>
             <option value="es">Español</option>
             <option value="en">Inglés</option>
+            <option value="pt">Portugués</option>
+            <option value="fr">Francés</option>
+            <option value="it">Italiano</option>
+            <option value="de">Alemán</option>
           </Select>
           
           <Button
@@ -529,7 +534,7 @@ export default function Home() {
           onDelete={handleDelete}
           onEdit={handleEdit}
           onSave={(data) => handleSave(data, false)} // Pasamos handleSave para la importación masiva
-          languages={["es", "en"]} // Añade más idiomas aquí según sea necesario
+          languages={["es", "en", "pt", "fr", "it", "de"]} // Todos los idiomas soportados
         />
       )}
     </Container>

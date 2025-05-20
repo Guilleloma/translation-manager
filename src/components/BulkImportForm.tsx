@@ -123,7 +123,7 @@ export const BulkImportForm: React.FC<BulkImportFormProps> = ({
     }
 
     // Validar idioma (debe ser uno de los admitidos)
-    const validLanguages = ['es', 'en']; // Agregar otros idiomas soportados si es necesario
+    const validLanguages = ['es', 'en', 'pt', 'fr', 'it', 'de']; // Todos los idiomas soportados
     if (!validLanguages.includes(importedCopy.language)) {
       importedCopy.errors?.push(`Idioma no válido. Valores permitidos: ${validLanguages.join(', ')}`);
       importedCopy.status = 'error';

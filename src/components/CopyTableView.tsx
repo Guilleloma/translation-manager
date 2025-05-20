@@ -204,6 +204,10 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
             >
               {lang === 'es' ? 'Español' : 
                lang === 'en' ? 'Inglés' : 
+               lang === 'pt' ? 'Portugués' :
+               lang === 'fr' ? 'Francés' :
+               lang === 'it' ? 'Italiano' :
+               lang === 'de' ? 'Alemán' :
                lang}
             </Checkbox>
           ))}
@@ -220,6 +224,10 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                 <Th key={lang}>
                   {lang === 'es' ? 'Español' : 
                    lang === 'en' ? 'Inglés' : 
+                   lang === 'pt' ? 'Portugués' :
+                   lang === 'fr' ? 'Francés' :
+                   lang === 'it' ? 'Italiano' :
+                   lang === 'de' ? 'Alemán' :
                    lang}
                 </Th>
               ))}
