@@ -6,15 +6,16 @@ import { User, UserRole } from '../types/user';
 /**
  * Context interface that defines all user-related operations
  */
-interface UserContextType {
+export interface UserContextType {
   currentUser: User | null;
   users: User[];
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
-  logout: () => void;
-  setCurrentUser: (user: User | null) => void;
+  logout: (callback?: () => void) => void;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
   updateUser: (userId: string, updates: Partial<User>) => void;
 }
 
@@ -24,6 +25,7 @@ const UserContext = createContext<UserContextType>({
   users: [],
   isAuthenticated: false,
   isLoading: true,
+  isLoggingOut: false,
   login: async () => false,
   register: async () => false,
   logout: () => {},
@@ -70,6 +72,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Check for stored user on initial load
   useEffect(() => {
@@ -177,10 +180,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Logout function
+   * @param callback Optional callback to run after logout is complete
    */
-  const logout = () => {
+  const logout = (callback?: () => void) => {
     console.log('Logging out user');
-    setCurrentUser(null);
+    
+    // First set logging out state to prevent components from rendering
+    // during the logout process
+    setIsLoggingOut(true);
+    
+    // Use a small delay to ensure React doesn't try to update components
+    // that might be unmounting
+    setTimeout(() => {
+      setCurrentUser(null);
+      
+      // Execute callback only after state has been updated
+      if (callback) {
+        // Additional delay to ensure state updates have propagated
+        setTimeout(() => {
+          setIsLoggingOut(false);
+          callback();
+        }, 50);
+      } else {
+        setIsLoggingOut(false);
+      }
+    }, 50);
   };
 
   // Update user in the users list
@@ -204,6 +228,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         users,
         isAuthenticated: !!currentUser,
         isLoading,
+        isLoggingOut,
         login,
         register,
         logout,
