@@ -47,13 +47,14 @@ export default function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     }
   }, [isAuthenticated, currentUser, isLoading, router, requiredRole]);
 
-  // Show loading state
+  // Show loading state immediately
   if (isLoading) {
+    console.log('Showing auth loading spinner');
     return (
-      <Center h="100vh">
-        <Box textAlign="center">
-          <Spinner size="xl" mb={4} />
-          <Text>Comprobando autenticación...</Text>
+      <Center h="100vh" position="fixed" top="0" left="0" width="100%" zIndex="9999" bg="rgba(255, 255, 255, 0.8)">
+        <Box textAlign="center" p={8} borderRadius="md" boxShadow="lg" bg="white">
+          <Spinner size="xl" thickness="4px" speed="0.65s" color="blue.500" mb={4} />
+          <Text fontSize="lg" fontWeight="medium">Comprobando autenticación...</Text>
         </Box>
       </Center>
     );

@@ -72,10 +72,18 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
   const pendingCopys = useMemo(() => {
     if (!selectedLanguage) return [];
     
-    return copys.filter(copy => 
+    // Mejoramos el filtrado para que considere correctamente el estado y el idioma
+    console.log(`Filtrando copys pendientes para idioma: ${selectedLanguage}`);
+    const filtered = copys.filter(copy => 
       copy.language === selectedLanguage && 
-      !copy.assignedTo
+      copy.status === 'not_assigned' // Usamos el status como criterio principal
     );
+    
+    console.log(`Encontrados ${filtered.length} copys pendientes para el idioma ${selectedLanguage}:`, 
+      filtered.map(c => ({ id: c.id, slug: c.slug, status: c.status }))
+    );
+    
+    return filtered;
   }, [copys, selectedLanguage]);
 
   // Limpiar selección cuando cambia el idioma

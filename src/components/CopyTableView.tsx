@@ -109,6 +109,21 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
     console.log('==== Recalculando groupedCopys ====');
     console.log(`Tenemos ${copys.length} copys y ${languages.length} idiomas`);
     
+    // Analizar estados de copys para debugging
+    const statusCount = { not_assigned: 0, assigned: 0, translated: 0 };
+    const languageCount = {};
+    
+    copys.forEach(copy => {
+      // Contar por estado
+      statusCount[copy.status] = (statusCount[copy.status] || 0) + 1;
+      
+      // Contar por idioma
+      languageCount[copy.language] = (languageCount[copy.language] || 0) + 1;
+    });
+    
+    console.log('📊 Distribución de copys por estado:', statusCount);
+    console.log('🌐 Distribución de copys por idioma:', languageCount);
+    
     // Step 1: Crear una nueva tabla vacía para evitar referencias antiguas
     const groupedTable: { [slug: string]: GroupedCopy } = {};
     
