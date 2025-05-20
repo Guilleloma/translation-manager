@@ -10,6 +10,7 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 ### Características principales
 
 - **Gestión multilenguaje robusta**: Un mismo slug puede tener diferentes traducciones, una por cada idioma.
+- **Soporte completo para 6 idiomas**: Español, Inglés, Portugués, Francés, Italiano y Alemán en toda la aplicación.
 - **Vista de tabla por idiomas**: Visualización clara de todos los copys organizados por slug e idioma.
 - **Creación y edición intuitiva**: Interfaz optimizada para trabajar eficientemente con traducciones.
 - **Detección de conflictos de slug**: Sistema de alerta visual (⚠️) que muestra posibles conflictos en la estructura JSON cuando un slug raíz ('button') colisiona con slugs anidados ('button.crear').
@@ -151,13 +152,16 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Validación de datos durante la importación
   - ✅ Visualización previa antes de confirmar la importación
 
-### Sprint 8: Traducción asistida (OpenAI) ⏳
-- ⏳ Integración backend proxy seguro para OpenAI
-- ⏳ Botón de sugerir traducción
-- ⏳ Soporte para idiomas adicionales
-  - ⏳ Ampliar soporte actual (Español, Inglés) para incluir: Italiano, Alemán, Francés y Portugués
-  - ⏳ Interfaz de selección de idioma mejorada
-  - ⏳ Validaciones y exportaciones adaptadas a multiples idiomas
+### Sprint 8: Soporte multilenguaje y mejoras UX ✅
+- ✅ Soporte completo para idiomas adicionales
+  - ✅ Ampliado soporte para incluir: Español, Inglés, Italiano, Alemán, Francés y Portugués
+  - ✅ Selección de idioma en todos los formularios
+  - ✅ Placeholders dinámicos acordes al idioma seleccionado
+  - ✅ Vista de tabla con todos los idiomas soportados
+  - ✅ Exportación JSON para todos los idiomas
+  - ✅ Importación masiva compatible con todos los idiomas
+- ⏳ Integración backend proxy seguro para OpenAI (pendiente)
+- ⏳ Botón de sugerir traducción (pendiente)
 
 ### Sprint 9: Persistencia y versión Beta ⏳
 - ⏳ Implementación de base de datos MongoDB
