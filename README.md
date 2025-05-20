@@ -160,8 +160,6 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Vista de tabla con todos los idiomas soportados
   - ✅ Exportación JSON para todos los idiomas
   - ✅ Importación masiva compatible con todos los idiomas
-- ⏳ Integración backend proxy seguro para OpenAI (pendiente)
-- ⏳ Botón de sugerir traducción (pendiente)
 
 ### Sprint 9: Persistencia y versión Beta ⏳
 - ⏳ Implementación de base de datos MongoDB
@@ -195,7 +193,23 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ⏳ Reportes de calidad y consistencia
 - ⏳ Exportación de reportes
 
-### Sprint 13: Exportación avanzada y CI/CD ⏳
+### Sprint 13: Traducción automática con OpenAI ⏳
+- ⏳ Integración backend proxy seguro para OpenAI
+- ⏳ Botón de sugerir traducción automática
+- ⏳ Configuración de parámetros para ajustar traducciones
+- ⏳ Feedback visual para traducciones automáticas
+- ⏳ Historial de sugerencias de traducción
+
+### Sprint 14: Exportación a Google Sheets ⏳
+- ⏳ Exportación en formato compatible con Google Sheets
+  - ⏳ Estructura con columnas: slug, en_GB, es_ES, it_IT, en_US, de_DE, fr_FR, pt_PT, pt_BR
+  - ⏳ Opciones de configuración para seleccionar idiomas a incluir
+  - ⏳ Exportación directa a archivo CSV
+  - ⏳ Instrucciones para importar a Google Sheets
+- ⏳ Vista previa de la estructura de exportación
+- ⏳ Filtros para exportar solo slugs específicos
+
+### Sprint 15: Exportación avanzada y CI/CD ⏳
 - ⏳ Exportación YAML
 - ⏳ GitHub Actions: lint, test, validación, build y deploy
 

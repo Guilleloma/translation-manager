@@ -21,6 +21,7 @@
 
 ### 4. Exportación e integración
 - Exportar los archivos de traducción por idioma (JSON/YAML).
+- Exportación a Google Sheets en formato CSV con estructura de columnas optimizada.
 - Documentación de integración con `react-i18next` o `next-i18next`.
 
 ---
@@ -79,6 +80,7 @@ Un "copy" en el prototipo tiene la siguiente estructura mínima:
   - Botón de guardar.
 - **Exportación:**
   - Acción para exportar los copys a JSON por idioma.
+  - Acción para exportar los copys a CSV con formato para Google Sheets.
 
 ### Flujos de usuario
 - **Crear copy:**
@@ -92,8 +94,9 @@ Un "copy" en el prototipo tiene la siguiente estructura mínima:
   2. Modifica campos y guarda.
   3. Se validan las reglas igual que en la creación.
 - **Exportar copys:**
-  1. El usuario pulsa exportar.
-  2. El sistema genera un archivo JSON agrupado por idioma.
+  1. El usuario pulsa exportar JSON o Google Sheets.
+  2. Para JSON: el sistema genera un archivo JSON agrupado por idioma.
+  3. Para Google Sheets: el sistema genera un archivo CSV con formato optimizado (columnas: slug, en_GB, es_ES, it_IT, en_US, de_DE, fr_FR, pt_PT, pt_BR).
 
 ---
 

@@ -27,6 +27,7 @@ import { CopyForm } from "../components/CopyForm";
 import { CopyTable } from "../components/CopyTable";
 import { CopyTableView } from "../components/CopyTableView";
 import { slugify } from "../utils/slugify";
+import { downloadGoogleSheetsCSV } from "../utils/exportToGoogleSheets";
 
 export default function Home() {
   // Estado principal de la aplicación
@@ -425,6 +426,62 @@ export default function Home() {
     }
   };
 
+  /**
+   * Exporta los copys a un archivo CSV con formato para Google Sheets
+   * Implementación del Sprint 14 - Exportación a Google Sheets
+   */
+  const exportToGoogleSheets = () => {
+    try {
+      let dataToExport: Copy[] = [];
+      
+      if (exportLanguage === "all") {
+        dataToExport = [...copys];
+      } else {
+        dataToExport = copys.filter((c) => c.language === exportLanguage);
+      }
+      
+      // Mapeo de idiomas internos a formato requerido por Google Sheets
+      const languageMapping: { [key: string]: string } = {
+        'es': 'es_ES',
+        'en': 'en_GB',
+        'it': 'it_IT',
+        'en-us': 'en_US',
+        'de': 'de_DE',
+        'fr': 'fr_FR',
+        'pt': 'pt_PT',
+        'pt-br': 'pt_BR'
+      };
+      
+      // Generar nombre de archivo
+      const fileName = `translations-gs-${exportLanguage === "all" ? "all" : exportLanguage}-${new Date().toISOString().split('T')[0]}.csv`;
+      
+      // Descargar como CSV para Google Sheets
+      downloadGoogleSheetsCSV(
+        dataToExport,
+        Object.values(languageMapping), // Usar todos los códigos de idioma mapeados
+        fileName
+      );
+      
+      // Mostrar toast de éxito
+      toast({
+        title: "Exportación a Google Sheets completada",
+        description: `Se han exportado ${dataToExport.length} copys en formato CSV compatible con Google Sheets`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error("Error al exportar a Google Sheets:", error);
+      toast({
+        title: "Error al exportar",
+        description: "Ha ocurrido un error en la exportación a Google Sheets",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   const cancelEdit = () => {
     setEditingCopy(null);
   };
@@ -506,8 +563,17 @@ export default function Home() {
             colorScheme="blue"
             onClick={exportToJson}
             isDisabled={copys.length === 0}
+            mr={2}
           >
             Exportar JSON
+          </Button>
+          <Button
+            colorScheme="green"
+            onClick={exportToGoogleSheets}
+            isDisabled={copys.length === 0}
+            leftIcon={<span>📊</span>}
+          >
+            Google Sheets
           </Button>
         </HStack>
       </Stack>
