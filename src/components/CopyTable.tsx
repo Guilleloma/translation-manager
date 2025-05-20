@@ -115,10 +115,9 @@ export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit })
 
 function getStatusColor(status: string) {
   switch (status) {
-    case 'pendiente': return 'yellow';
-    case 'traducido': return 'blue';
-    case 'revisado': return 'purple';
-    case 'aprobado': return 'green';
+    case 'not_assigned': return 'yellow';
+    case 'assigned': return 'blue';
+    case 'translated': return 'green';
     default: return 'gray';
   }
 }

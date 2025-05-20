@@ -4,10 +4,10 @@ import { CopyTableView } from '../CopyTableView';
 import { Copy } from '../../types/copy';
 
 const copys: Copy[] = [
-  { id: '1', slug: 'button', text: 'Botón General', language: 'es', status: 'pendiente' },
-  { id: '2', slug: 'button.crear', text: 'Crear', language: 'es', status: 'pendiente' },
-  { id: '3', slug: 'button.cancelar', text: 'Cancelar', language: 'es', status: 'pendiente' },
-  { id: '4', slug: 'button.save', text: 'Save', language: 'en', status: 'pendiente' },
+  { id: '1', slug: 'button', text: 'Botón General', language: 'es', status: 'not_assigned' },
+  { id: '2', slug: 'button.crear', text: 'Crear', language: 'es', status: 'not_assigned' },
+  { id: '3', slug: 'button.cancelar', text: 'Cancelar', language: 'es', status: 'not_assigned' },
+  { id: '4', slug: 'button.save', text: 'Save', language: 'en', status: 'not_assigned' },
 ];
 
 describe('CopyTableView', () => {
@@ -31,8 +31,8 @@ describe('CopyTableView', () => {
     render(
       <CopyTableView
         copys={[
-          { id: '1', slug: 'menu', text: 'Menú', language: 'es', status: 'pendiente' },
-          { id: '2', slug: 'menu.file', text: 'Archivo', language: 'es', status: 'pendiente' },
+          { id: '1', slug: 'menu', text: 'Menú', language: 'es', status: 'not_assigned' },
+          { id: '2', slug: 'menu.file', text: 'Archivo', language: 'es', status: 'not_assigned' },
         ]}
         onEdit={jest.fn()}
         onDelete={jest.fn()}

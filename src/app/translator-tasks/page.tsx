@@ -170,11 +170,9 @@ export default function TranslatorTasks() {
   // Función para obtener el color del estado
   const getStatusColor = (status: string) => {
     const statusColors = {
-      'pendiente': 'gray',
+      'not_assigned': 'gray',
       'assigned': 'yellow',
-      'traducido': 'green',
-      'revisado': 'blue',
-      'aprobado': 'purple'
+      'translated': 'green'
     };
     
     return statusColors[status as keyof typeof statusColors] || 'gray';
@@ -183,11 +181,9 @@ export default function TranslatorTasks() {
   // Función para obtener el nombre del estado
   const getStatusName = (status: string) => {
     const statusNames = {
-      'pendiente': 'Pendiente',
+      'not_assigned': 'No asignado',
       'assigned': 'Asignado',
-      'traducido': 'Traducido',
-      'revisado': 'Revisado',
-      'aprobado': 'Aprobado'
+      'translated': 'Traducido'
     };
     
     return statusNames[status as keyof typeof statusNames] || status;
@@ -224,7 +220,7 @@ export default function TranslatorTasks() {
         return {
           ...copy,
           text: translationText,
-          status: 'traducido',
+          status: 'translated',
           completedAt: new Date()
         };
       }
@@ -366,10 +362,10 @@ export default function TranslatorTasks() {
                       <Button
                         size="sm"
                         colorScheme="blue"
-                        isDisabled={task.status === 'traducido'}
+                        isDisabled={task.status === 'translated'}
                         onClick={() => handleTranslate(task)}
                       >
-                        {task.status === 'traducido' ? 'Traducido' : 'Traducir'}
+                        {task.status === 'translated' ? 'Traducido' : 'Traducir'}
                       </Button>
                     </HStack>
                   </Td>

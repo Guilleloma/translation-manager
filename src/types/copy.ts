@@ -1,4 +1,10 @@
-export type CopyStatus = 'pendiente' | 'assigned' | 'traducido' | 'revisado' | 'aprobado';
+/**
+ * Estados posibles de una traducción
+ * - not_assigned: No asignado a ningún traductor
+ * - assigned: Asignado a un traductor pero pendiente de traducir
+ * - translated: Ya traducido por el traductor asignado
+ */
+export type CopyStatus = 'not_assigned' | 'assigned' | 'translated';
 
 export interface CopyInput {
   slug?: string;

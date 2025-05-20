@@ -41,7 +41,7 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
    - Sugerencia automática de slugs si solo tienes el copy.
 2. **Edición y gestión centralizada:**
    - Búsqueda, filtrado y edición en tiempo real.
-   - Estado de cada copy: pendiente, traducido, revisado, aprobado.
+   - Estado de cada copy: no asignado (not_assigned), asignado (assigned), traducido (translated).
 3. **Asignación de tareas por idioma y usuario:**
    - El admin asigna copys pendientes a traductores según idioma.
    - Cada traductor ve solo sus tareas y puede marcar como traducido.
