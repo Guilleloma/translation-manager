@@ -136,7 +136,8 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
           </Button>
           
           <Text fontSize="sm" textAlign="center">
-            Nota: Para la demo, puedes usar admin@example.com o translator@example.com (cualquier contraseña)
+            Nota: Para la demo, puedes usar admin@example.com / admin123, reviewer@example.com / reviewer123, 
+            dev@example.com / dev123 o cualquier traductor (ana@example.com, maria@example.com, etc. con contraseña translator123)
           </Text>
         </Stack>
       </form>

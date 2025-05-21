@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types/user';
+import { seedUsers, resetToSeedData } from '../utils/seedData';
 
 /**
  * Context interface that defines all user-related operations
@@ -33,36 +34,9 @@ const UserContext = createContext<UserContextType>({
   updateUser: () => {},
 });
 
-// Usuarios de ejemplo para el prototipo (sería reemplazado por una API real en producción)
-const MOCK_USERS: User[] = [
-  {
-    id: 'admin-1',
-    username: 'Admin Demo',
-    email: 'admin@example.com',
-    role: UserRole.ADMIN,
-  },
-  {
-    id: 'translator-1',
-    username: 'Traductor EN-FR',
-    email: 'translator@example.com',
-    role: UserRole.TRANSLATOR,
-    languages: ['en', 'fr'],
-  },
-  {
-    id: 'translator-2',
-    username: 'María García',
-    email: 'maria@example.com',
-    role: UserRole.TRANSLATOR,
-    languages: ['es', 'it'],
-  },
-  {
-    id: 'translator-3',
-    username: 'John Smith',
-    email: 'john@example.com',
-    role: UserRole.TRANSLATOR,
-    languages: ['en', 'de'],
-  },
-];
+// Utilizamos los usuarios definidos en seedData.ts para mantener la consistencia
+// Esto nos permite tener una única fuente de verdad para los datos de prueba
+const MOCK_USERS: User[] = seedUsers;
 
 /**
  * User Provider Component
@@ -122,11 +96,32 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       console.log('Starting login API call');
       await new Promise(resolve => setTimeout(resolve, 800));
       
+      // Obtener los usuarios más recientes del localStorage
+      const storedUsers = localStorage.getItem('users');
+      let userList = MOCK_USERS;
+      
+      if (storedUsers) {
+        try {
+          userList = JSON.parse(storedUsers);
+          // Actualizar la lista de usuarios en el contexto
+          setUsers(userList);
+        } catch (error) {
+          console.error('Error parsing stored users:', error);
+        }
+      }
+      
       // Find user with matching email
-      const user = MOCK_USERS.find(u => u.email === email);
+      const user = userList.find(u => u.email === email);
       
       // In a real app, we'd validate the password here
+      // Para el prototipo, validamos la contraseña si existe en el usuario
       if (user) {
+        if (user.password && user.password !== password) {
+          console.log('Login failed: Incorrect password');
+          setIsLoading(false);
+          return false;
+        }
+        
         setCurrentUser(user);
         console.log(`Login successful: ${user.username}`);
         setIsLoading(false); // Desactivar estado de carga al completar exitosamente

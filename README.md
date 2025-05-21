@@ -170,15 +170,58 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ⏳ Configuración de entorno de pruebas
   - ⏳ Documentación para usuarios beta
 
-### Sprint 10: Flujo de revisión y feedback ⏳
-- ⏳ Estado de traducción: pendiente, traducido, revisado, aprobado
-- ⏳ Historial de cambios
-- ⏳ Sistema de roles y permisos
-  - ⏳ Roles definidos (Traductor, Revisor, Admin)
-  - ⏳ Control de acceso basado en roles
-  - ⏳ Flujos de aprobación según roles
+### Sprint 10: Flujo de revisión y feedback ✅
+- ✅ Sistema de comentarios para cada copy
+- ✅ Etiquetado de traducciones (urgente, legal, marketing)
+- ✅ Historial de cambios por copy
+- ✅ Mejora de estados (revisado, aprobado, rechazado)
+- ✅ Interfaz mejorada para cambio de estado en el formulario de edición
+- ✅ Filtrado por estado en la página principal
+- ✅ Sección de tareas pendientes para revisores
+- ✅ Botón de acción "Revisar" para revisores
+- ✅ Flujo de revisión con registro de comentarios en historial
+  - ✅ Indicadores visuales del estado de cada traducción
+  - ✅ Transiciones de estado controladas (solo ciertos roles pueden hacer ciertas transiciones)
+- ✅ Sistema de feedback y comentarios:
+  - ✅ Comentarios por traducción
+  - ✅ Notificaciones de nuevos comentarios
+  - ✅ Historial de comentarios
+- ✅ Etiquetado de traducciones:
+  - ✅ Etiquetas personalizables para organizar copys (urgente, marketing, legal, etc.)
+  - ✅ Vista filtrada por etiquetas para facilitar la organización del trabajo
+  - ✅ Búsqueda avanzada combinando etiquetas, estados y texto
+- ✅ Historial de cambios
+- ✅ Sistema de roles y permisos
+  - ✅ Roles definidos (Traductor, Revisor, Admin, Developer)
+  - ✅ Control de acceso basado en roles
+  - ✅ Flujos de aprobación según roles
+  - ✅ Rol "Developer" con permisos especiales para modificar slugs
 
-### Sprint 11: Versionado de traducciones ⏳
+### Sprint 11.1: Seguridad y Mejoras de UX ⏳
+- ⏳ Restricción de operaciones para usuarios no autenticados
+  - ⏳ Verificación de autenticación en operaciones de edición y eliminación
+  - ⏳ Deshabilitación visual de botones para usuarios no autenticados
+  - ⏳ Redirección a login cuando sea necesario
+- ⏳ Confirmación doble para acciones irreversibles
+  - ⏳ Modal de confirmación para eliminación de copys
+  - ⏳ Diseño claro que indique la irreversibilidad de la acción
+- ⏳ Mejoras de feedback visual
+  - ⏳ Notificaciones toast para confirmar acciones completadas
+  - ⏳ Indicadores de carga durante operaciones asíncronas
+  - ⏳ Mensajes de error más descriptivos y útiles
+
+### Sprint 11: Pruebas Automatizadas 🧪
+- 🔄 Configuración de entorno de pruebas E2E con Cypress
+- 🔄 Pruebas automatizadas para flujos críticos:
+  - 🔄 Autenticación y autorización
+  - 🔄 Gestión de copys (crear, editar, eliminar)
+  - 🔄 Flujos de traducción y revisión
+  - 🔄 Sistema de comentarios y etiquetado
+- 🔄 Integración con CI/CD
+- 🔄 Reportes de cobertura de pruebas
+- 🔄 Pruebas de regresión visual
+
+### Sprint 12: Versionado de traducciones ⏳
 - ⏳ Sistema de etiquetado de versiones para traducciones
   - ⏳ Crear releases de traducciones
   - ⏳ Comparación entre versiones

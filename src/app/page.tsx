@@ -1,45 +1,88 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
-  Heading,
-  Container,
-  Input,
-  InputGroup,
-  InputLeftElement,
   Button,
-  Stack,
+  Container,
+  Heading,
+  VStack,
   HStack,
   Text,
-  useToast,
-  Select,
+  Input,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Badge,
   IconButton,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
+  useToast,
   Flex,
-  Spacer
-} from "@chakra-ui/react";
-import { v4 as uuidv4 } from "uuid";
-import { Copy, CopyInput } from "../types/copy";
-import { CopyForm } from "../components/CopyForm";
-import { CopyTable } from "../components/CopyTable";
+  Spacer,
+  Select,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Divider,
+  Tabs, TabList, TabPanels, Tab, TabPanel,
+  Tooltip,
+  InputGroup,
+  InputLeftElement,
+  Stack
+} from '@chakra-ui/react';
+import { SearchIcon, AddIcon } from '@chakra-ui/icons';
+import { useUser } from '../context/UserContext';
+import { CopyForm } from '../components/CopyForm';
+import { Copy, CopyInput, CopyStatus, UserRole, CopyHistory } from '../types/copy';
+import { TranslationStatus } from '../components/status/TranslationStatus';
+import HistoryModal from '../components/history/HistoryModal';
+import { CopyTable } from '../components/CopyTable';
 import { CopyTableView } from "../components/CopyTableView";
 import { slugify } from "../utils/slugify";
 import { downloadGoogleSheetsCSV } from "../utils/exportToGoogleSheets";
 
 export default function Home() {
+  const { currentUser } = useUser();
   // Estado principal de la aplicación
   const [copys, setCopys] = useState<Copy[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredCopys, setFilteredCopys] = useState<Copy[]>([]);
   const [editingCopy, setEditingCopy] = useState<Copy | null>(null);
   const [exportLanguage, setExportLanguage] = useState("all");
-  const [currentLanguage, setCurrentLanguage] = useState("es");  // Idioma para el formulario actual
-  const [viewMode, setViewMode] = useState<"list" | "table">("list");  // Modo de vista: lista o tabla
+  const [currentLanguage, setCurrentLanguage] = useState("es");  // Estados para filtros
+  const [viewMode, setViewMode] = useState<"list" | "table">("list");  // Estados para filtros
+  const [statusFilter, setStatusFilter] = useState<CopyStatus | "all">("all");
+  const [tagFilter, setTagFilter] = useState<string | "all">("all");
+  
+  // Obtener las etiquetas disponibles de los copys existentes
+  const availableTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    
+    // Recorrer todos los copys y recopilar sus etiquetas
+    copys.forEach(copy => {
+      if (copy.tags && Array.isArray(copy.tags)) {
+        copy.tags.forEach(tag => tagsSet.add(tag));
+      }
+    });
+    
+    // Convertir el Set a un array y ordenarlo alfabéticamente
+    return Array.from(tagsSet).sort();
+  }, [copys]);
   const [updateTrigger, setUpdateTrigger] = useState(0); // Nuevo estado para forzar actualizaciones
   const toast = useToast();
+
+  // Estados para los modales
+  const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+  
+  // Copy seleccionado para ver su historial
+  const [selectedHistoryCopy, setSelectedHistoryCopy] = useState<Copy | null>(null);
 
   // Cargar copys desde localStorage cuando el componente se monta
   useEffect(() => {
@@ -93,25 +136,94 @@ export default function Home() {
     console.groupEnd();
   }, [copys]);
   
-  // Filtrar copys cada vez que cambie la búsqueda o el array de copys
+  // Filtrar copys según la búsqueda, estado y etiquetas
   useEffect(() => {
-    console.log(`Aplicando filtro de búsqueda: "${searchQuery}"`);
+    console.log(`Aplicando filtros - Búsqueda: "${searchQuery}", Estado: ${statusFilter}, Etiqueta: ${tagFilter}`);
     
-    if (searchQuery.trim() === "") {
-      console.log(`Sin filtro, mostrando todos los ${copys.length} copys`);
-      setFilteredCopys(copys);
-    } else {
+    // Aplicar filtros en secuencia: primero por texto, luego por estado, finalmente por etiqueta
+    let filtered = [...copys];
+    
+    // Filtro por texto (búsqueda)
+    if (searchQuery.trim() !== "") {
       const lowerQuery = searchQuery.toLowerCase();
-      const filtered = copys.filter(
+      filtered = filtered.filter(
         (copy) =>
           copy.slug.toLowerCase().includes(lowerQuery) ||
           copy.text.toLowerCase().includes(lowerQuery)
       );
-      console.log(`Filtro aplicado: ${filtered.length}/${copys.length} copys coinciden`);
-      setFilteredCopys(filtered);
+      console.log(`Filtro de texto aplicado: ${filtered.length}/${copys.length} copys coinciden`);
     }
-  }, [searchQuery, copys, updateTrigger]); // Añadido updateTrigger para forzar actualizaciones
+    
+    // Filtro por estado
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(copy => copy.status === statusFilter);
+      console.log(`Filtro de estado aplicado: ${filtered.length}/${copys.length} copys con estado ${statusFilter}`);
+    }
+    
+    // Filtro por etiqueta
+    if (tagFilter !== "all") {
+      filtered = filtered.filter(copy => 
+        copy.tags && copy.tags.includes(tagFilter)
+      );
+      console.log(`Filtro de etiqueta aplicado: ${filtered.length}/${copys.length} copys con etiqueta ${tagFilter}`);
+    }
+    
+    setFilteredCopys(filtered);
+  }, [searchQuery, statusFilter, tagFilter, copys, updateTrigger]); // Añadido tagFilter a las dependencias
 
+  // Manejar cambios de estado de las traducciones
+  const handleStatusChange = useCallback((copyId: string, newStatus: CopyStatus, historyEntry?: CopyHistory) => {
+    console.group('🔄 CAMBIO DE ESTADO');
+    console.log(`Copy ID: ${copyId}`);
+    console.log(`Nuevo estado: ${newStatus}`);
+    console.log('Entrada de historial:', historyEntry);
+    
+    setCopys(prevCopys => {
+      const copyIndex = prevCopys.findIndex(c => c.id === copyId);
+      
+      if (copyIndex === -1) {
+        console.error(`No se encontró el copy con ID: ${copyId}`);
+        return prevCopys;
+      }
+      
+      const updatedCopys = [...prevCopys];
+      const copyToUpdate = { ...updatedCopys[copyIndex] };
+      
+      // Actualizar el estado del copy
+      copyToUpdate.status = newStatus;
+      copyToUpdate.updatedAt = new Date();
+      
+      // Actualizar fechas según el estado
+      const now = new Date();
+      if (newStatus === 'assigned') {
+        copyToUpdate.assignedAt = now;
+      } else if (newStatus === 'translated') {
+        copyToUpdate.completedAt = now;
+      } else if (newStatus === 'reviewed') {
+        copyToUpdate.reviewedAt = now;
+        copyToUpdate.reviewedBy = currentUser?.id;
+      } else if (newStatus === 'approved') {
+        copyToUpdate.approvedAt = now;
+        copyToUpdate.approvedBy = currentUser?.id;
+      }
+      
+      // Agregar al historial si se proporciona
+      if (historyEntry) {
+        copyToUpdate.history = [
+          ...(copyToUpdate.history || []),
+          historyEntry
+        ];
+      }
+      
+      updatedCopys[copyIndex] = copyToUpdate;
+      
+      console.log('✅ Estado actualizado exitosamente');
+      console.groupEnd();
+      
+      return updatedCopys;
+    });
+  }, [currentUser?.id]);
+  
   // Manejar la creación o actualización de copys
   /**
    * Maneja la creación o actualización de un copy en el sistema
@@ -342,7 +454,12 @@ export default function Home() {
     if (!copy.id) {
       console.log("Creando un nuevo copy basado en un slug existente");
     }
+    // Establecer el copy que se está editando
     setEditingCopy(copy);
+    // Actualizar el idioma actual al del copy que se está editando
+    setCurrentLanguage(copy.language);
+    // Abrir el modal de edición
+    onEditOpen();
   };
 
   const exportToJson = () => {
@@ -484,99 +601,203 @@ export default function Home() {
 
   const cancelEdit = () => {
     setEditingCopy(null);
+    onEditClose();
+  };
+
+  const handleViewHistory = (copy: Copy) => {
+    console.log('Abriendo historial para:', copy.slug);
+    setSelectedHistoryCopy(copy);
+    onHistoryOpen();
   };
 
   return (
     <Container maxW="container.lg" py={8}>
-      <Heading mb={4}>Gestión de Copys</Heading>
-      
-      {/* Formulario de creación/edición */}
-      <Box mb={6} p={4} borderWidth="1px" borderRadius="lg">
-        <Text fontSize="lg" fontWeight="bold" mb={3}>
-          {editingCopy ? "Editar Copy" : "Crear Copy"}
-        </Text>
-        <CopyForm
-          existingCopys={copys.filter(c => editingCopy ? c.id !== editingCopy.id : true)}
-          onSave={(data) => handleSave(data, !!editingCopy)}
-          onCancel={editingCopy ? cancelEdit : undefined}
-          initialValues={editingCopy || {}}
-          isEditing={!!editingCopy}
-          // Pasar el setter de currentLanguage al formulario
-          onLanguageChange={setCurrentLanguage}
-        />
-      </Box>
-      
-      {/* Barra de búsqueda y exportación */}
-      <Stack direction={{ base: "column", md: "row" }} mb={4} spacing={4}>
-        <InputGroup maxW={{ base: "100%", md: "40%" }}>
-          <InputLeftElement pointerEvents="none">
-            🔍
-          </InputLeftElement>
-          <Input
-            placeholder="Buscar por texto o slug..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </InputGroup>
-        
-        <HStack>
-          <Button
-            size="md"
-            colorScheme={viewMode === "list" ? "blue" : "gray"}
-            variant={viewMode === "list" ? "solid" : "outline"}
-            onClick={() => setViewMode("list")}
-            leftIcon={<span>📋</span>}
-          >
-            Lista
-          </Button>
-          <Button
-            size="md"
-            colorScheme={viewMode === "table" ? "blue" : "gray"}
-            variant={viewMode === "table" ? "solid" : "outline"}
-            onClick={() => setViewMode("table")}
-            leftIcon={<span>📊</span>}
-          >
-            Tabla
-          </Button>
-        </HStack>
-        
-        <Spacer />
-        
+      <HStack mb={4} justifyContent="space-between" alignItems="center">
+        <Heading>Gestión de Copys</Heading>
         <HStack spacing={3}>
-          {/* Selector de idiomas para exportación - Incluye todos los idiomas soportados */}
-          <Select 
-            value={exportLanguage} 
-            onChange={(e) => setExportLanguage(e.target.value)}
-            size="md"
-            width="130px"
-          >
-            <option value="all">Todos</option>
-            <option value="es">Español</option>
-            <option value="en">Inglés</option>
-            <option value="pt">Portugués</option>
-            <option value="fr">Francés</option>
-            <option value="it">Italiano</option>
-            <option value="de">Alemán</option>
-          </Select>
-          
           <Button
-            colorScheme="blue"
-            onClick={exportToJson}
-            isDisabled={copys.length === 0}
-            mr={2}
-          >
-            Exportar JSON
-          </Button>
-          <Button
+            leftIcon={<AddIcon />}
             colorScheme="green"
-            onClick={exportToGoogleSheets}
-            isDisabled={copys.length === 0}
-            leftIcon={<span>📊</span>}
+            onClick={() => {
+              setEditingCopy(null); // Asegurarse de que no hay un copy en edición
+              onEditOpen();
+            }}
           >
-            Google Sheets
+            Crear Copy
+          </Button>
+          <Button 
+            colorScheme="teal" 
+            leftIcon={<span>📥</span>}
+            onClick={() => {
+              // Abrir la vista de tabla si no está activa
+              if (viewMode !== "table") {
+                setViewMode("table");
+              }
+              // Simulamos un clic en el botón de importación del CopyTableView
+              // Esto se manejará cuando se renderice el componente
+              setTimeout(() => {
+                const importButton = document.querySelector('[data-testid="bulk-import-button"]');
+                if (importButton) {
+                  (importButton as HTMLButtonElement).click();
+                }
+              }, 100);
+            }}
+          >
+            Importar copys masivamente
           </Button>
         </HStack>
-      </Stack>
+      </HStack>
+      
+      {/* Modal de creación/edición */}
+      <Modal isOpen={isEditOpen} onClose={cancelEdit} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{editingCopy ? "Editar Copy" : "Crear Copy"}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <CopyForm
+              existingCopys={copys.filter(c => editingCopy ? c.id !== editingCopy.id : true)}
+              onSave={(data) => {
+                handleSave(data, !!editingCopy);
+                onEditClose();
+              }}
+              onStatusChange={handleStatusChange}
+              onAddComment={(copyId, comment) => {
+                // Implementar lógica para agregar comentarios si es necesario
+                console.log('Agregando comentario:', { copyId, comment });
+              }}
+              onTagsChange={(copyId, tags) => {
+                // Implementar lógica para actualizar etiquetas si es necesario
+                console.log('Actualizando etiquetas:', { copyId, tags });
+              }}
+              onCancel={cancelEdit}
+              initialValues={editingCopy || {}}
+              isEditing={!!editingCopy}
+              // Pasar el setter de currentLanguage al formulario
+              onLanguageChange={setCurrentLanguage}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={cancelEdit}>
+              Cancelar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      
+      {/* Sección de búsqueda y filtros */}
+      <Box mb={6}>
+        <VStack spacing={4} align="stretch">
+          {/* Fila 1: Búsqueda y filtros */}
+          <Flex direction={{ base: "column", md: "row" }} gap={4} align="center">
+            <InputGroup maxW={{ base: "100%", md: "400px" }}>
+              <InputLeftElement pointerEvents="none">
+                <SearchIcon color="gray.300" />
+              </InputLeftElement>
+              <Input
+                placeholder="Buscar por texto o slug..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </InputGroup>
+            
+            <HStack spacing={4} flexWrap="wrap">
+              {/* Filtro por estado */}
+              <Select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value as CopyStatus | "all")}
+                width={{ base: "100%", md: "200px" }}
+                placeholder="Filtrar por estado"
+              >
+                <option value="all">Todos los estados</option>
+                <option value="not_assigned">Sin asignar</option>
+                <option value="assigned">Asignados</option>
+                <option value="translated">Traducidos</option>
+                <option value="reviewed">Revisados</option>
+                <option value="approved">Aprobados</option>
+                <option value="rejected">Rechazados</option>
+              </Select>
+              
+              {/* Filtro por etiqueta */}
+              <Select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                width={{ base: "100%", md: "200px" }}
+                placeholder="Filtrar por etiqueta"
+              >
+                <option value="all">Todas las etiquetas</option>
+                {availableTags.map(tag => (
+                  <option key={tag} value={tag}>{tag.charAt(0).toUpperCase() + tag.slice(1)}</option>
+                ))}
+              </Select>
+            </HStack>
+          </Flex>
+          
+          {/* Fila 2: Vistas y exportación */}
+          <Flex direction={{ base: "column", md: "row" }} justify="space-between" align="center" gap={4}>
+            {/* Botones de vista */}
+            <HStack spacing={2}>
+              <Text fontWeight="medium" fontSize="sm">Vista:</Text>
+              <Button
+                size="sm"
+                colorScheme={viewMode === "list" ? "blue" : "gray"}
+                variant={viewMode === "list" ? "solid" : "outline"}
+                onClick={() => setViewMode("list")}
+                leftIcon={<span>📋</span>}
+              >
+                Lista
+              </Button>
+              <Button
+                size="sm"
+                colorScheme={viewMode === "table" ? "blue" : "gray"}
+                variant={viewMode === "table" ? "solid" : "outline"}
+                onClick={() => setViewMode("table")}
+                leftIcon={<span>📊</span>}
+              >
+                Tabla
+              </Button>
+            </HStack>
+            
+            {/* Exportación */}
+            <HStack spacing={3}>
+              <Text fontWeight="medium" fontSize="sm">Exportar:</Text>
+              {/* Selector de idiomas para exportación */}
+              <Select 
+                value={exportLanguage} 
+                onChange={(e) => setExportLanguage(e.target.value)}
+                size="sm"
+                width="130px"
+              >
+                <option value="all">Todos</option>
+                <option value="es">Español</option>
+                <option value="en">Inglés</option>
+                <option value="pt">Portugués</option>
+                <option value="fr">Francés</option>
+                <option value="it">Italiano</option>
+                <option value="de">Alemán</option>
+              </Select>
+              
+              <Button
+                size="sm"
+                colorScheme="blue"
+                onClick={exportToJson}
+                isDisabled={copys.length === 0}
+              >
+                Exportar JSON
+              </Button>
+              <Button
+                size="sm"
+                colorScheme="green"
+                onClick={exportToGoogleSheets}
+                isDisabled={copys.length === 0}
+                leftIcon={<span>📊</span>}
+              >
+                Google Sheets
+              </Button>
+            </HStack>
+          </Flex>
+        </VStack>
+      </Box>
       
       {/* Vista de copys (tabla o lista) */}
       {viewMode === "list" ? (
@@ -585,6 +806,7 @@ export default function Home() {
             copys={filteredCopys} 
             onDelete={handleDelete} 
             onEdit={handleEdit} 
+            onViewHistory={handleViewHistory}
           />
           
           {/* Contador de resultados para vista lista */}
@@ -599,10 +821,18 @@ export default function Home() {
           copys={filteredCopys}
           onDelete={handleDelete}
           onEdit={handleEdit}
+          onViewHistory={handleViewHistory}
           onSave={(data) => handleSave(data, false)} // Pasamos handleSave para la importación masiva
           languages={["es", "en", "pt", "fr", "it", "de"]} // Todos los idiomas soportados
         />
       )}
+      
+      {/* Modal de historial */}
+      <HistoryModal
+        copy={selectedHistoryCopy}
+        isOpen={isHistoryOpen}
+        onClose={onHistoryClose}
+      />
     </Container>
   );
 }

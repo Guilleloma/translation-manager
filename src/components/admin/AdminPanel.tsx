@@ -141,15 +141,39 @@ export default function AdminPanel() {
     if (!currentUser) return;
     
     console.log(`Changing user role: ${user.username} from ${user.role}`);
-    const newRole = user.role === UserRole.ADMIN ? UserRole.TRANSLATOR : UserRole.ADMIN;
+    
+    // Determine the next role in the sequence
+    let newRole: UserRole;
+    switch (user.role) {
+      case UserRole.ADMIN:
+        newRole = UserRole.TRANSLATOR;
+        break;
+      case UserRole.TRANSLATOR:
+        newRole = UserRole.REVIEWER;
+        break;
+      case UserRole.REVIEWER:
+        newRole = UserRole.DEVELOPER;
+        break;
+      case UserRole.DEVELOPER:
+      default:
+        newRole = UserRole.ADMIN;
+    }
     
     // Update the user's role
     updateUser(user.id, { role: newRole });
     
+    // Get role display name
+    const roleNames = {
+      [UserRole.ADMIN]: 'Administrador',
+      [UserRole.TRANSLATOR]: 'Traductor',
+      [UserRole.REVIEWER]: 'Revisor',
+      [UserRole.DEVELOPER]: 'Desarrollador'
+    };
+    
     // Show success message
     toast({
       title: 'Rol actualizado',
-      description: `El usuario ${user.username} ahora es ${newRole === UserRole.ADMIN ? 'Administrador' : 'Traductor'}`,
+      description: `El usuario ${user.username} ahora es ${roleNames[newRole]}`,
       status: 'success',
       duration: 3000,
       isClosable: true,
@@ -203,35 +227,14 @@ export default function AdminPanel() {
     totalUsers: users.length,
     admins: users.filter(u => u.role === UserRole.ADMIN).length,
     translators: users.filter(u => u.role === UserRole.TRANSLATOR).length,
+    reviewers: users.filter(u => u.role === UserRole.REVIEWER).length,
+    developers: users.filter(u => u.role === UserRole.DEVELOPER).length,
   };
 
   return (
     <Box>
       <Flex justify="space-between" align="center" mb={6}>
         <Heading size="lg">Panel de Administración</Heading>
-        
-        <Tooltip label="Restaurar datos de prueba para demostraciones">
-          <Button
-            size="sm"
-            colorScheme="blue"
-            variant="outline"
-            leftIcon={<RepeatIcon />}
-            onClick={() => {
-              resetToSeedData();
-              // Forzar recarga de la página para ver los cambios
-              window.location.reload();
-              toast({
-                title: 'Datos restaurados',
-                description: 'Se han restaurado los datos de prueba para demostraciones',
-                status: 'info',
-                duration: 3000,
-                isClosable: true,
-              });
-            }}
-          >
-            Restaurar datos de prueba
-          </Button>
-        </Tooltip>
       </Flex>
       
       <Tabs variant="enclosed">
@@ -248,20 +251,37 @@ export default function AdminPanel() {
             <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
               <Heading fontSize="xl" mb={4}>Estadísticas Generales</Heading>
               
-              <Box display="flex" flexWrap="wrap" gap={4}>
-                <Box flex="1" p={4} borderWidth="1px" borderRadius="md" bg="blue.50">
+              <Box display="grid" gridTemplateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={4}>
+                <Box p={4} borderWidth="1px" borderRadius="md" bg="blue.50">
                   <Heading size="md" mb={2}>Usuarios Totales</Heading>
-                  <Text fontSize="2xl">{stats.totalUsers}</Text>
+                  <Text fontSize="2xl" fontWeight="bold" color="blue.700">{stats.totalUsers}</Text>
                 </Box>
                 
-                <Box flex="1" p={4} borderWidth="1px" borderRadius="md" bg="purple.50">
+                <Box p={4} borderWidth="1px" borderRadius="md" bg="purple.50">
                   <Heading size="md" mb={2}>Administradores</Heading>
-                  <Text fontSize="2xl">{stats.admins}</Text>
+                  <Text fontSize="2xl" fontWeight="bold" color="purple.700">{stats.admins}</Text>
                 </Box>
                 
-                <Box flex="1" p={4} borderWidth="1px" borderRadius="md" bg="green.50">
+                <Box p={4} borderWidth="1px" borderRadius="md" bg="green.50">
                   <Heading size="md" mb={2}>Traductores</Heading>
-                  <Text fontSize="2xl">{stats.translators}</Text>
+                  <Text fontSize="2xl" fontWeight="bold" color="green.700">{stats.translators}</Text>
+                </Box>
+                
+                <Box p={4} borderWidth="1px" borderRadius="md" bg="orange.50">
+                  <Heading size="md" mb={2}>Revisores</Heading>
+                  <Text fontSize="2xl" fontWeight="bold" color="orange.700">{stats.reviewers}</Text>
+                </Box>
+                
+                <Box p={4} borderWidth="1px" borderRadius="md" bg="blue.50">
+                  <Heading size="md" mb={2}>Desarrolladores</Heading>
+                  <Text fontSize="2xl" fontWeight="bold" color="blue.700">{stats.developers}</Text>
+                </Box>
+                
+                <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
+                  <Heading size="md" mb={2}>Otros Usuarios</Heading>
+                  <Text fontSize="2xl" fontWeight="bold" color="gray.700">
+                    {stats.totalUsers - (stats.admins + stats.translators + stats.reviewers + stats.developers)}
+                  </Text>
                 </Box>
               </Box>
             </Box>
@@ -296,8 +316,16 @@ export default function AdminPanel() {
                       <Td>{user.username}</Td>
                       <Td>{user.email}</Td>
                       <Td>
-                        <Badge colorScheme={user.role === UserRole.ADMIN ? 'purple' : 'green'}>
-                          {user.role === UserRole.ADMIN ? 'Admin' : 'Traductor'}
+                        <Badge 
+                          colorScheme={
+                            user.role === UserRole.ADMIN ? 'purple' :
+                            user.role === UserRole.REVIEWER ? 'orange' :
+                            user.role === UserRole.DEVELOPER ? 'blue' : 'green'
+                          }
+                        >
+                          {user.role === UserRole.ADMIN ? 'Admin' :
+                           user.role === UserRole.TRANSLATOR ? 'Traductor' :
+                           user.role === UserRole.REVIEWER ? 'Revisor' : 'Desarrollador'}
                         </Badge>
                       </Td>
                       <Td>
@@ -315,10 +343,14 @@ export default function AdminPanel() {
                         <Box display="flex" gap={2}>
                           <Button
                             size="sm"
-                            colorScheme={user.role === UserRole.ADMIN ? 'green' : 'purple'}
+                            colorScheme={
+                              user.role === UserRole.ADMIN ? 'green' :
+                              user.role === UserRole.TRANSLATOR ? 'orange' :
+                              user.role === UserRole.REVIEWER ? 'blue' : 'purple'
+                            }
                             onClick={() => toggleUserRole(user)}
                           >
-                            {user.role === UserRole.ADMIN ? 'Hacer Traductor' : 'Hacer Admin'}
+                            Cambiar Rol
                           </Button>
                           <Button
                             size="sm"
