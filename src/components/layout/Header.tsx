@@ -77,10 +77,12 @@ export default function Header() {
                     </Link>
                   )}
                   
-                  {/* Show translator tasks link for translators */}
-                  {currentUser?.role === UserRole.TRANSLATOR && (
+                  {/* Show tasks link for translators and reviewers */}
+                  {(currentUser?.role === UserRole.TRANSLATOR || currentUser?.role === UserRole.REVIEWER) && (
                     <Link as={NextLink} href="/translator-tasks" _hover={{ textDecoration: 'none' }}>
-                      <Button variant="ghost">Mis Tareas</Button>
+                      <Button variant="ghost">
+                        {currentUser?.role === UserRole.TRANSLATOR ? 'Mis Tareas' : 'Tareas Pendientes'}
+                      </Button>
                     </Link>
                   )}
                   

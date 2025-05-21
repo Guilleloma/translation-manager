@@ -37,24 +37,32 @@ import {
   ModalBody,
   ModalCloseButton,
   useColorModeValue,
+  VStack
 } from '@chakra-ui/react';
 import { SearchIcon, CheckIcon, CloseIcon } from '@chakra-ui/icons';
 import { useUser } from '../../context/UserContext';
 import { Copy } from '../../types/copy';
 
 /**
- * Página de tareas asignadas para traductores
- * Muestra las tareas pendientes, permite filtrar por idioma y actualizar el estado
+ * Página de tareas asignadas para traductores y revisores
+ * Muestra las tareas pendientes según el rol del usuario, permite filtrar por idioma y actualizar el estado
  */
-export default function TranslatorTasks() {
+export default function UserTasks() {
   const { currentUser } = useUser();
   const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [copys, setCopys] = useState<Copy[]>([]);
   const [editingCopy, setEditingCopy] = useState<Copy | null>(null);
   const [translationText, setTranslationText] = useState('');
   const { isOpen, onOpen, onClose } = useDisclosure();
+  
+  // Estado para el modal de historial
+  const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
+  
+  // Copy seleccionado para ver su historial
+  const [selectedHistoryCopy, setSelectedHistoryCopy] = useState<Copy | null>(null);
   
   // Colores para la UI
   const tableBgColor = useColorModeValue('white', 'gray.800');
@@ -64,22 +72,25 @@ export default function TranslatorTasks() {
   useEffect(() => {
     // En este punto, cargaríamos los datos de la API
     // Por ahora, simulamos utilizando localStorage
-    console.log('🔄 Cargando copys desde localStorage...');
+    console.log(' Cargando copys desde localStorage...');
     const storedCopys = localStorage.getItem('copys');
     if (storedCopys) {
       try {
         const parsedCopys = JSON.parse(storedCopys);
         setCopys(parsedCopys);
-        console.log(`✅ Copys cargados desde localStorage: ${parsedCopys.length}`);
+        console.log(` Copys cargados desde localStorage: ${parsedCopys.length}`);
       } catch (error) {
-        console.error('❌ Error al cargar copys:', error);
+        console.error(' Error al cargar copys:', error);
         setCopys([]);
       }
     }
   }, []);
   
-  // Verificar si el usuario está autenticado y es traductor
-  if (!currentUser || currentUser.role !== 'translator') {
+  // Verificar si el usuario está autenticado y tiene un rol válido
+  const isTranslator = currentUser?.role === 'translator';
+  const isReviewer = currentUser?.role === 'reviewer';
+  
+  if (!currentUser || (!isTranslator && !isReviewer)) {
     return (
       <Container maxW="container.xl" py={10}>
         <Box textAlign="center" py={10} px={6}>
@@ -87,56 +98,68 @@ export default function TranslatorTasks() {
             Acceso Restringido
           </Heading>
           <Text mt={4} mb={8}>
-            Esta página es solo para traductores. Por favor, inicia sesión con una cuenta de traductor.
+            Esta página es solo para traductores y revisores. Por favor, inicia sesión con una cuenta adecuada.
           </Text>
         </Box>
       </Container>
     );
   }
   
-  // Filtrar las tareas asignadas al traductor actual
-  const assignedTasks = useMemo(() => {
-    console.log(`🔍 Filtrando tareas para traductor: ${currentUser.username} (ID: ${currentUser.id})`);
-    console.log('Comprobando asignaciones:')
+  // Filtrar las tareas según el rol del usuario
+  const userTasks = useMemo(() => {
+    console.log(` Filtrando tareas para usuario: ${currentUser.username} (ID: ${currentUser.id}, Rol: ${currentUser.role})`);
     
-    // Esto es para debugging, listar todos los IDs de asignación
-    const assignedIds = new Set();
-    copys.forEach(copy => {
-      if (copy.assignedTo) {
-        assignedIds.add(copy.assignedTo);
-      }
-    });
-    console.log('IDs en asignaciones:', Array.from(assignedIds));
+    // Determinar qué tareas mostrar según el rol
+    let filteredTasks: Copy[] = [];
     
-    // En caso de que las asignaciones usen el nombre de usuario en lugar del id
-    const possibleIds = [currentUser.id, `translator-${currentUser.id}`, currentUser.username];
-    console.log('Posibles IDs del usuario actual:', possibleIds);
-    
-    let filtered = copys.filter(copy => {
-      // Buscar en todas las posibles formas en que el usuario podría estar asignado
-      return possibleIds.includes(copy.assignedTo);
-    });
-    
-    console.log(`📋 Total de tareas asignadas: ${filtered.length}`);
-    
-    // Aplicar filtro de idioma si existe
-    if (filterLanguage) {
-      filtered = filtered.filter(copy => copy.language === filterLanguage);
-      console.log(`🌎 Filtro de idioma aplicado (${filterLanguage}): ${filtered.length} tareas`);
-    }
-    
-    // Aplicar filtro de búsqueda si existe
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(copy => 
-        copy.slug.toLowerCase().includes(lowerQuery) || 
-        copy.text.toLowerCase().includes(lowerQuery)
+    if (isTranslator) {
+      // Para traductores: mostrar tareas asignadas a ellos
+      console.log('Buscando tareas asignadas al traductor:');
+      
+      // En caso de que las asignaciones usen diferentes formatos de ID
+      const possibleIds = [currentUser.id, `translator-${currentUser.id}`, currentUser.username];
+      console.log('Posibles IDs del usuario actual:', possibleIds);
+      
+      filteredTasks = copys.filter(copy => 
+        possibleIds.includes(copy.assignedTo) && 
+        copy.status === 'assigned'
       );
-      console.log(`🔎 Filtro de búsqueda aplicado: ${filtered.length} tareas`);
+    } else if (isReviewer) {
+      // Para revisores: mostrar tareas traducidas pendientes de revisión
+      console.log('Buscando tareas pendientes de revisión:');
+      filteredTasks = copys.filter(copy => copy.status === 'translated');
     }
     
-    return filtered;
-  }, [copys, currentUser, filterLanguage, searchQuery]);
+    console.log(`Tareas encontradas: ${filteredTasks.length}`);
+    
+    // Aplicar filtros adicionales (búsqueda y lenguaje)
+    let result = [...filteredTasks];
+    
+    // Filtrar por idioma si se ha seleccionado uno
+    if (filterLanguage) {
+      result = result.filter(copy => copy.language === filterLanguage);
+      console.log(`Filtrado por idioma ${filterLanguage}: ${result.length} tareas`);
+    }
+    
+    // Filtrar por estado si se ha seleccionado uno (solo para revisores)
+    if (isReviewer && filterStatus !== 'all') {
+      result = result.filter(copy => copy.status === filterStatus);
+      console.log(`Filtrado por estado ${filterStatus}: ${result.length} tareas`);
+    }
+    
+    // Filtrar por texto de búsqueda
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(copy => 
+        copy.text.toLowerCase().includes(query) || 
+        copy.slug.toLowerCase().includes(query)
+      );
+      console.log(`Filtrado por búsqueda "${searchQuery}": ${result.length} tareas`);
+    }
+    
+    // Devolver el resultado filtrado
+    return result;
+  }, [copys, currentUser, filterLanguage, filterStatus, searchQuery, isTranslator, isReviewer]);
   
   // Obtener los idiomas disponibles para el traductor
   const translatorLanguages = useMemo(() => {
@@ -172,7 +195,10 @@ export default function TranslatorTasks() {
     const statusColors = {
       'not_assigned': 'gray',
       'assigned': 'yellow',
-      'translated': 'green'
+      'translated': 'green',
+      'reviewed': 'purple',
+      'approved': 'blue',
+      'rejected': 'red'
     };
     
     return statusColors[status as keyof typeof statusColors] || 'gray';
@@ -180,29 +206,46 @@ export default function TranslatorTasks() {
   
   // Función para obtener el nombre del estado
   const getStatusName = (status: string) => {
-    const statusNames = {
-      'not_assigned': 'No asignado',
+    const statusNames: Record<string, string> = {
+      'not_assigned': 'Sin asignar',
       'assigned': 'Asignado',
-      'translated': 'Traducido'
+      'translated': 'Traducido',
+      'reviewed': 'Revisado',
+      'approved': 'Aprobado',
+      'rejected': 'Rechazado'
     };
     
     return statusNames[status as keyof typeof statusNames] || status;
   };
   
-  // Función para iniciar la traducción de un copy
+  // Función para iniciar la traducción o revisión de un copy
   const handleTranslate = (copy: Copy) => {
-    console.log(`📝 Iniciando traducción para copy: ${copy.slug}`);
+    if (isReviewer) {
+      console.log(` Iniciando revisión para copy: ${copy.slug}`);
+    } else {
+      console.log(` Iniciando traducción para copy: ${copy.slug}`);
+    }
+    
     setEditingCopy(copy);
     setTranslationText(copy.text);
     onOpen();
   };
   
-  // Función para guardar la traducción
+  // Función para ver el historial de un copy
+  const handleViewHistory = (copy: Copy) => {
+    console.log(` Viendo historial para copy: ${copy.slug}`);
+    setSelectedHistoryCopy(copy);
+    onHistoryOpen();
+  };
+  
+  // Función para guardar la traducción o revisión
   const handleSaveTranslation = () => {
     if (!editingCopy || !translationText.trim()) {
       toast({
         title: 'Error',
-        description: 'Debes proporcionar una traducción válida',
+        description: isReviewer 
+          ? 'Debes proporcionar comentarios para la revisión' 
+          : 'Debes proporcionar una traducción válida',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -210,19 +253,56 @@ export default function TranslatorTasks() {
       return;
     }
     
-    console.log(`💾 Guardando traducción para: ${editingCopy.slug}`);
-    console.log(`📊 Texto original: "${editingCopy.text.substring(0, 50)}..."`);
-    console.log(`📊 Traducción: "${translationText.substring(0, 50)}..."`);
+    // Determinar el nuevo estado según el rol del usuario
+    const newStatus = isReviewer ? 'reviewed' : 'translated';
+    const actionName = isReviewer ? 'revisión' : 'traducción';
+    
+    console.log(` Guardando ${actionName} para: ${editingCopy.slug}`);
+    console.log(` Texto original: "${editingCopy.text.substring(0, 50)}..."`);
+    console.log(` ${isReviewer ? 'Texto revisado' : 'Traducción'}: "${translationText.substring(0, 50)}..."`);
+    
+    // Crear una entrada de historial
+    const historyEntry = {
+      id: `history-${Date.now()}`,
+      copyId: editingCopy.id,
+      userId: currentUser.id,
+      userName: currentUser.username,
+      previousStatus: editingCopy.status,
+      newStatus: newStatus,
+      createdAt: new Date(),
+      comments: isReviewer ? translationText : undefined
+    };
+    
+    console.log('Creando entrada de historial:', historyEntry);
     
     // Actualizar el copy en el estado local
     const updatedCopys = copys.map(copy => {
       if (copy.id === editingCopy.id) {
-        return {
+        const updatedCopy = {
           ...copy,
-          text: translationText,
-          status: 'translated',
-          completedAt: new Date()
+          status: newStatus,
+          // Si es revisor, no modificamos el texto sino que agregamos un comentario
+          // Si es traductor, actualizamos el texto
+          ...(!isReviewer && { text: translationText }),
         };
+        
+        // Agregar fechas según el estado
+        if (newStatus === 'translated') {
+          updatedCopy.completedAt = new Date();
+        } else if (newStatus === 'reviewed') {
+          updatedCopy.reviewedAt = new Date();
+          updatedCopy.reviewedBy = currentUser.id;
+        }
+        
+        // Agregar historial si no existe
+        if (!updatedCopy.history) {
+          updatedCopy.history = [];
+        }
+        
+        // Agregar la nueva entrada al historial
+        updatedCopy.history.push(historyEntry);
+        
+        return updatedCopy;
       }
       return copy;
     });
@@ -233,12 +313,14 @@ export default function TranslatorTasks() {
     // En una app real, aquí haríamos una llamada a la API
     // Por ahora, guardamos en localStorage
     localStorage.setItem('copys', JSON.stringify(updatedCopys));
-    console.log(`✅ Traducción guardada en localStorage`);
+    console.log(` Traducción guardada en localStorage`);
     
     // Mostrar notificación de éxito
     toast({
-      title: 'Traducción guardada',
-      description: `La traducción para "${editingCopy.slug}" ha sido completada`,
+      title: isReviewer ? 'Revisión completada' : 'Traducción guardada',
+      description: isReviewer
+        ? `La revisión para "${editingCopy.slug}" ha sido completada.`
+        : `La traducción para "${editingCopy.slug}" ha sido guardada.`,
       status: 'success',
       duration: 3000,
       isClosable: true,
@@ -251,8 +333,17 @@ export default function TranslatorTasks() {
   };
   
   return (
-    <Container maxW="container.xl" py={6}>
-      <Heading as="h1" mb={6}>Mis Tareas de Traducción</Heading>
+    <Container maxW="container.xl" py={10}>
+      <Heading mb={6}>
+        {isTranslator ? 'Mis Tareas de Traducción' : 'Tareas Pendientes de Revisión'}
+      </Heading>
+      
+      <Text mb={4}>
+        Bienvenido/a, <strong>{currentUser.username}</strong>. 
+        {isTranslator 
+          ? 'Aquí puedes ver y gestionar tus tareas de traducción asignadas.' 
+          : 'Aquí puedes revisar las traducciones pendientes de aprobación.'}
+      </Text>
       
       <Card mb={6} variant="outline" borderColor={borderColor}>
         <CardHeader pb={2}>
@@ -260,7 +351,7 @@ export default function TranslatorTasks() {
             <Heading size="md">Filtros</Heading>
             <Spacer />
             <Text fontSize="sm" color="gray.500">
-              {assignedTasks.length} tareas encontradas
+              {userTasks.length} tareas encontradas
             </Text>
           </Flex>
         </CardHeader>
@@ -301,7 +392,7 @@ export default function TranslatorTasks() {
         </CardBody>
       </Card>
       
-      {assignedTasks.length === 0 ? (
+      {userTasks.length === 0 ? (
         <Box
           bg="gray.50"
           p={10}
@@ -336,7 +427,7 @@ export default function TranslatorTasks() {
             </Thead>
             
             <Tbody>
-              {assignedTasks.map(task => (
+              {userTasks.map(task => (
                 <Tr key={task.id}>
                   <Td fontFamily="mono" fontSize="sm">
                     {task.slug}
@@ -361,12 +452,27 @@ export default function TranslatorTasks() {
                     <HStack spacing={2}>
                       <Button
                         size="sm"
-                        colorScheme="blue"
-                        isDisabled={task.status === 'translated'}
+                        colorScheme={isReviewer ? "purple" : "blue"}
+                        isDisabled={isTranslator && task.status === 'translated'}
                         onClick={() => handleTranslate(task)}
                       >
-                        {task.status === 'translated' ? 'Traducido' : 'Traducir'}
+                        {isReviewer 
+                          ? (task.status === 'reviewed' ? 'Revisado' : 'Revisar')
+                          : (task.status === 'translated' ? 'Traducido' : 'Traducir')
+                        }
                       </Button>
+                      {task.history && task.history.length > 0 && (
+                        <Tooltip label="Ver historial de cambios">
+                          <Button
+                            size="sm"
+                            colorScheme="gray"
+                            variant="outline"
+                            onClick={() => handleViewHistory(task)}
+                          >
+                            Historial
+                          </Button>
+                        </Tooltip>
+                      )}
                     </HStack>
                   </Td>
                 </Tr>
@@ -376,12 +482,12 @@ export default function TranslatorTasks() {
         </Box>
       )}
       
-      {/* Modal para editar/traducir */}
+      {/* Modal para editar/traducir/revisar */}
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
-            Traducir Copy
+            {isReviewer ? 'Revisar Traducción' : 'Traducir Copy'}
             {editingCopy && (
               <Text fontSize="sm" fontWeight="normal" mt={1} color="gray.500">
                 {editingCopy.slug}
@@ -428,11 +534,11 @@ export default function TranslatorTasks() {
               Cancelar
             </Button>
             <Button 
-              colorScheme="blue" 
+              colorScheme={isReviewer ? "purple" : "blue"} 
               onClick={handleSaveTranslation}
               isDisabled={!translationText.trim()}
             >
-              Guardar Traducción
+              {isReviewer ? 'Aprobar Revisión' : 'Guardar Traducción'}
             </Button>
           </ModalFooter>
         </ModalContent>

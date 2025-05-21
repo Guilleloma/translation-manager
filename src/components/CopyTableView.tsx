@@ -39,6 +39,7 @@ interface CopyTableViewProps {
   onDelete: (id: string) => void;
   onSave?: (copy: Omit<Copy, 'id' | 'status'>) => void;
   languages?: string[];
+  onViewHistory?: (copy: Copy) => void;
 }
 
 type GroupedCopy = {
@@ -54,6 +55,7 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
   onEdit, 
   onDelete,
   onSave,
+  onViewHistory,
   languages = ['es', 'en'] 
 }) => {
   const [showLanguages, setShowLanguages] = useState<string[]>(languages);
@@ -195,18 +197,12 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
     <>
     <Box overflowX="auto">
       <VStack spacing={4} align="stretch" mb={4}>
-        <Flex justifyContent="space-between" alignItems="center">
+        <Flex justify="space-between" align="center" mb={4}>
           <Text fontSize="lg" fontWeight="bold">
             Vista de tabla por idiomas
           </Text>
-          <Button 
-            colorScheme="teal" 
-            leftIcon={<span>📥</span>} 
-            size="sm"
-            onClick={onOpen}
-          >
-            Importar copys masivamente
-          </Button>
+          {/* Botón de importación masiva eliminado */}
+          <Box data-testid="bulk-import-button" style={{ display: 'none' }} onClick={onOpen}></Box>
         </Flex>
         
         <HStack spacing={2} flexWrap="wrap">
@@ -352,6 +348,26 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                             </MenuItem>
                           );
                         })}
+                        {/* Opción para ver el historial si hay alguna traducción con historial */}
+                        {onViewHistory && Object.values(group.translations).some(copy => 
+                          copy && copy.history && copy.history.length > 0
+                        ) && (
+                          <MenuItem 
+                            icon={<span>📋</span>}
+                            onClick={() => {
+                              // Buscar la primera traducción con historial
+                              const copyWithHistory = Object.values(group.translations).find(
+                                copy => copy && copy.history && copy.history.length > 0
+                              );
+                              if (copyWithHistory) {
+                                onViewHistory(copyWithHistory);
+                              }
+                            }}
+                          >
+                            Ver historial de cambios
+                          </MenuItem>
+                        )}
+                        
                         <MenuItem 
                           icon={<span>🗑️</span>}
                           color="red.500"

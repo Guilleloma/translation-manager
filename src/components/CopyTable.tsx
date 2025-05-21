@@ -19,9 +19,10 @@ interface CopyTableProps {
   copys: Copy[];
   onDelete: (id: string) => void;
   onEdit: (copy: Copy) => void;
+  onViewHistory?: (copy: Copy) => void;
 }
 
-export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit }) => {
+export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit, onViewHistory }) => {
   // Detectar posibles conflictos de slug (slug raíz vs slug con prefijo)
   // Ejemplo: 'button' vs 'button.crear' causarían conflicto en la estructura JSON
   const slugConflicts = useMemo(() => {
