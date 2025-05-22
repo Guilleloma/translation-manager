@@ -197,18 +197,26 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Flujos de aprobación según roles
   - ✅ Rol "Developer" con permisos especiales para modificar slugs
 
+### Sprint 11: Mejoras de Consistencia UI ✅
+- ✅ Estandarización de estados y colores
+  - ✅ Componente `StatusBadge` reutilizable para mostrar estados de forma consistente
+  - ✅ Configuración centralizada de colores y etiquetas para cada estado
+  - ✅ Tooltips informativos para estados en toda la aplicación
+- ✅ Mejora del selector de roles en el panel de administración
+  - ✅ Componente `RoleSelector` con menú desplegable de opciones
+  - ✅ Feedback visual claro sobre el rol actual y las opciones disponibles
+  - ✅ Experiencia de usuario mejorada al cambiar roles
+- ✅ Estandarización de la visualización de idiomas
+  - ✅ Componente `LanguageBadge` reutilizable para mostrar idiomas de forma consistente
+  - ✅ Configuración centralizada de nombres y colores para cada idioma
+  - ✅ Tooltips para mostrar el nombre completo cuando se usa el código
+
 ### Sprint 11.1: Seguridad y Mejoras de UX ⏳
-- ⏳ Restricción de operaciones para usuarios no autenticados
-  - ⏳ Verificación de autenticación en operaciones de edición y eliminación
-  - ⏳ Deshabilitación visual de botones para usuarios no autenticados
-  - ⏳ Redirección a login cuando sea necesario
+- ⏳ Restricción de operaciones para usuarios no autenticados. Solo se podran ver los datos de la lista de copys y tabla, pero no se podran editar ni eliminar ni crear copys.
+
 - ⏳ Confirmación doble para acciones irreversibles
   - ⏳ Modal de confirmación para eliminación de copys
   - ⏳ Diseño claro que indique la irreversibilidad de la acción
-- ⏳ Mejoras de feedback visual
-  - ⏳ Notificaciones toast para confirmar acciones completadas
-  - ⏳ Indicadores de carga durante operaciones asíncronas
-  - ⏳ Mensajes de error más descriptivos y útiles
 
 ### Sprint 11: Pruebas Automatizadas 🧪
 - 🔄 Configuración de entorno de pruebas E2E con Cypress
