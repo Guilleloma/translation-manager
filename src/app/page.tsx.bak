@@ -248,19 +248,6 @@ export default function Home() {
     console.group('💾 Guardando copy');
     console.log('Datos recibidos:', data);
     
-    // Verificar si el usuario está autenticado
-    if (!isAuthenticated && !isImport) {
-      console.log('Intento de guardar sin autenticación');
-      toast({
-        title: "Acción no permitida",
-        description: "Debe iniciar sesión para crear o editar copys",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    
     // Activar indicador de carga si no es una importación masiva
     if (!isImport && !(data as any).isBulkImport) {
       setIsSaving(true);
@@ -281,13 +268,19 @@ export default function Home() {
           // Crear entrada de historial para el cambio
           const historyEntry: CopyHistory = {
             id: generateUniqueId(),
-            copyId: editingCopy.id,
-            userId: currentUser ? currentUser.id : 'system',
-            userName: currentUser ? currentUser.username : 'Sistema',
-            createdAt: new Date(),
-            previousText: updatedCopys[copyIndex].text,
-            newText: data.text,
-            comments: 'Edición de texto'
+            date: new Date(),
+            user: currentUser ? {
+              id: currentUser.id,
+              username: currentUser.username,
+              email: currentUser.email
+            } : {
+              id: 'system',
+              username: 'Sistema',
+              email: 'system@example.com'
+            },
+            previousValue: updatedCopys[copyIndex].text,
+            newValue: data.text,
+            type: 'edit'
           };
           
           // Simular una pequeña demora para mostrar el indicador de carga
@@ -552,149 +545,40 @@ export default function Home() {
   };
 
   const cancelEdit = () => {
-    setEditingCopy(null);
-    onEditClose();
-  };
-
-  // Función para mostrar el modal de confirmación de eliminación
-  const handleDeleteConfirmation = (id: string) => {
-    // Verificar si el usuario está autenticado
-    if (!isAuthenticated) {
-      toast({
-        title: "Acción no permitida",
-        description: "Debe iniciar sesión para eliminar copys",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    
-    // Buscar el copy por ID para obtener el slug
-    const copyToRemove = copys.find(copy => copy.id === id);
-    if (!copyToRemove) {
-      console.error('No se encontró el copy con ID:', id);
-      return;
-    }
-    
-    // Guardar el copy a eliminar y mostrar el modal de confirmación
-    setCopyToDelete({id: copyToRemove.id, slug: copyToRemove.slug});
-    onDeleteModalOpen();
-    
-    // Log para debugging
-    console.log('🗑️ Solicitando confirmación para eliminar copy:', copyToRemove.id, copyToRemove.slug);
-  };
-
-  // Función para editar un copy
-  const handleEdit = (copy: Copy) => {
-    // Verificar si el usuario está autenticado
-    if (!isAuthenticated) {
-      toast({
-        title: "Acción no permitida",
-        description: "Debe iniciar sesión para editar copys",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    
-    setEditingCopy(copy);
-    onEditOpen();
-    
-    // Log para debugging
-    console.log('✏️ Editando copy:', copy.id, copy.slug);
-  };
-  
-  // Función para ver el historial de un copy
-  const handleViewHistory = (copy: Copy) => {
-    setSelectedHistoryCopy(copy);
-    onHistoryOpen();
-  };
-
-  return (
     <Container maxW="container.lg" py={8}>
       <HStack mb={4} justifyContent="space-between" alignItems="center">
         <Heading>Gestión de Copys</Heading>
         <HStack spacing={3}>
-          <Tooltip 
-            label="Debe iniciar sesión para crear copys" 
-            isDisabled={isAuthenticated}
-            hasArrow
-            placement="top"
+          <Button
+            leftIcon={<AddIcon />}
+            colorScheme="green"
+            onClick={() => {
+              setEditingCopy(null); // Asegurarse de que no hay un copy en edición
+              onEditOpen();
+            }}
           >
-            <Button
-              leftIcon={<AddIcon />}
-              colorScheme="green"
-              onClick={() => {
-                // Verificar si el usuario está autenticado
-                if (!isAuthenticated) {
-                  toast({
-                    title: "Acción no permitida",
-                    description: "Debe iniciar sesión para crear copys",
-                    status: "warning",
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                  return;
-                }
-                
-                setEditingCopy(null); // Asegurarse de que no hay un copy en edición
-                onEditOpen();
-              }}
-              isDisabled={!isAuthenticated}
-              _disabled={{
-                opacity: 0.6,
-                cursor: "not-allowed"
-              }}
-            >
-              Create Copy
-            </Button>
-          </Tooltip>
-          <Tooltip
-            label="Debe iniciar sesión para importar copys"
-            isDisabled={isAuthenticated}
-            hasArrow
-            placement="top"
-          >
-            <Button 
-              colorScheme="teal" 
-              leftIcon={<span>📥</span>}
-              onClick={() => {
-                // Verificar si el usuario está autenticado
-                if (!isAuthenticated) {
-                  toast({
-                    title: "Acción no permitida",
-                    description: "Debe iniciar sesión para importar copys",
-                    status: "warning",
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                  return;
-                }
-                
-                // Abrir la vista de tabla si no está activa
-                if (viewMode !== "table") {
-                  setViewMode("table");
-                }
-                // Simulamos un clic en el botón de importación del CopyTableView
-                // Esto se manejará cuando se renderice el componente
-                setTimeout(() => {
-                  const importButton = document.querySelector('[data-testid="bulk-import-button"]');
-                  if (importButton) {
-                    (importButton as HTMLButtonElement).click();
-                  }
-                }, 100);
-              }}
-              isDisabled={!isAuthenticated}
-              _disabled={{
-                opacity: 0.6,
-                cursor: "not-allowed"
-              }}
-            >
-            Bulk Import
+            Crear Copy
           </Button>
-          </Tooltip>
+          <Button 
+            colorScheme="teal" 
+            leftIcon={<span>📥</span>}
+            onClick={() => {
+              // Abrir la vista de tabla si no está activa
+              if (viewMode !== "table") {
+                setViewMode("table");
+              }
+              // Simulamos un clic en el botón de importación del CopyTableView
+              // Esto se manejará cuando se renderice el componente
+              setTimeout(() => {
+                const importButton = document.querySelector('[data-testid="bulk-import-button"]');
+                if (importButton) {
+                  (importButton as HTMLButtonElement).click();
+                }
+              }, 100);
+            }}
+          >
+            Importar copys masivamente
+          </Button>
         </HStack>
       </HStack>
       
