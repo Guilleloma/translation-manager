@@ -66,6 +66,7 @@ export const CopyForm: React.FC<CopyFormProps> = ({
   const [slugTouched, setSlugTouched] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false); // Estado para indicador de carga
   
   // Estados para las nuevas funcionalidades del Sprint 10
   const [activeTab, setActiveTab] = useState(0);
@@ -116,37 +117,71 @@ export const CopyForm: React.FC<CopyFormProps> = ({
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Activar indicador de carga
+    setIsSubmitting(true);
     
     // Resetear errores
     setFormError('');
     
-    // Validar que al menos uno de los dos campos esté presente
-    if (!text?.trim() && !slug?.trim()) {
-      setFormError('Debes proporcionar al menos un texto o un slug.');
-      return;
-    }
-    
-    // Validar el slug si está presente
-    if (slug && !validateSlug(slug)) {
-      return;
-    }
-    
-    // Si no hay texto pero hay slug, usamos un texto predeterminado
-    const finalText = text?.trim() || `[${slug}]`;
-    
-    onSave({ 
-      slug: slug || '', 
-      text: finalText,
-      language 
-    });
-    
-    // Resetear solo si no estamos editando
-    if (!isEditing) {
-      setText('');
-      setSlug('');
-      setSlugTouched(false);
+    try {
+      // Validar que al menos uno de los dos campos esté presente
+      if (!text?.trim() && !slug?.trim()) {
+        setFormError('Debes proporcionar al menos un texto o un slug.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Validar el slug si existe
+      if (slug && !validateSlug(slug)) {
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Preparar los datos para guardar
+      const copyData = {
+        text: text.trim(),
+        slug: slug.trim() || slugify(text.trim()), // Si no hay slug, generar uno a partir del texto
+        language,
+      };
+      
+      // Simular una pequeña demora para mostrar el indicador de carga
+      // En una aplicación real, esto sería una llamada a la API
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Llamar a la función de guardado proporcionada por el padre
+      onSave(copyData);
+      
+      // Mostrar notificación de éxito
+      toast({
+        title: isEditing ? "Copy actualizado" : "Copy guardado",
+        description: isEditing 
+          ? `El copy "${copyData.slug}" ha sido actualizado correctamente.` 
+          : `El copy "${copyData.slug}" ha sido creado correctamente.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      
+      // Resetear el formulario si no estamos en modo edición
+      if (!isEditing) {
+        setText('');
+        setSlug('');
+      }
+    } catch (error) {
+      console.error('Error al guardar el copy:', error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error al guardar el copy. Inténtalo de nuevo.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      // Desactivar indicador de carga
+      setIsSubmitting(false);
     }
   };
 
@@ -325,12 +360,18 @@ export const CopyForm: React.FC<CopyFormProps> = ({
             <Button 
               type="submit" 
               colorScheme="blue" 
-              isDisabled={!!error || (!text?.trim() && !slug?.trim())}
+              isDisabled={!!error || (!text?.trim() && !slug?.trim()) || isSubmitting}
+              isLoading={isSubmitting}
+              loadingText={isEditing ? "Actualizando..." : "Guardando..."}
             >
               {isEditing ? 'Actualizar' : 'Guardar'}
             </Button>
             {onCancel && (
-              <Button onClick={onCancel} variant="outline">
+              <Button 
+                onClick={onCancel} 
+                variant="outline"
+                isDisabled={isSubmitting}
+              >
                 Cancelar
               </Button>
             )}

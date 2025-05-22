@@ -211,12 +211,17 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Configuración centralizada de nombres y colores para cada idioma
   - ✅ Tooltips para mostrar el nombre completo cuando se usa el código
 
-### Sprint 11.1: Seguridad y Mejoras de UX ⏳
-- ⏳ Restricción de operaciones para usuarios no autenticados. Solo se podran ver los datos de la lista de copys y tabla, pero no se podran editar ni eliminar ni crear copys.
+### Sprint 11.1: Seguridad y Mejoras de UX ✅
+- ✅ Restricción de operaciones para usuarios no autenticados. Solo se pueden ver los datos de la lista de copys y tabla, pero no se pueden editar, eliminar ni crear copys sin autenticación.
 
-- ⏳ Confirmación doble para acciones irreversibles
-  - ⏳ Modal de confirmación para eliminación de copys
-  - ⏳ Diseño claro que indique la irreversibilidad de la acción
+- ✅ Confirmación doble para acciones irreversibles
+  - ✅ Modal de confirmación para eliminación de copys
+  - ✅ Diseño claro que indique la irreversibilidad de la acción
+
+- ✅ Mejoras de feedback visual
+  - ✅ Notificaciones toast para confirmar acciones completadas
+  - ✅ Indicadores de carga durante operaciones asíncronas
+  - ✅ Mensajes de error más descriptivos y útiles
 
 ### Sprint 11: Pruebas Automatizadas 🧪
 - 🔄 Configuración de entorno de pruebas E2E con Cypress

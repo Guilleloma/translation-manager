@@ -26,12 +26,14 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
+  ModalFooter,
   ModalCloseButton,
   useDisclosure,
   useToast
 } from '@chakra-ui/react';
 import { Copy } from '../types/copy';
 import { BulkImportForm } from './BulkImportForm';
+import { useUser } from '../context/UserContext';
 
 interface CopyTableViewProps {
   copys: Copy[];
@@ -58,6 +60,10 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
   onViewHistory,
   languages = ['es', 'en'] 
 }) => {
+  const { isAuthenticated } = useUser(); // Obtener el estado de autenticación
+  const { isOpen: isDeleteModalOpen, onOpen: onDeleteModalOpen, onClose: onDeleteModalClose } = useDisclosure(); // Para el modal de confirmación
+  const [copyToDelete, setCopyToDelete] = useState<Copy | null>(null); // Para almacenar el copy que se va a eliminar
+  const [slugToDelete, setSlugToDelete] = useState<string>(''); // Para almacenar el slug que se va a eliminar (todas las traducciones)
   const [showLanguages, setShowLanguages] = useState<string[]>(languages);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
@@ -322,29 +328,43 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                           return copy ? (
                             <MenuItem 
                               key={lang}
-                              onClick={() => onEdit(copy)}
+                              onClick={() => isAuthenticated ? onEdit(copy) : null}
                               icon={<span>✏️</span>}
+                              isDisabled={!isAuthenticated}
                             >
                               Editar ({lang})
+                              {!isAuthenticated && (
+                                <Tooltip label="Debe iniciar sesión para editar" placement="right">
+                                  <span style={{ marginLeft: '5px' }}>ℹ️</span>
+                                </Tooltip>
+                              )}
                             </MenuItem>
                           ) : (
                             <MenuItem 
                               key={lang}
                               icon={<span>➕</span>}
                               // Crear nuevo copy con este slug e idioma
+                              isDisabled={!isAuthenticated}
                               onClick={() => {
-                                console.log(`🔴 Iniciando creación de nuevo copy para slug "${group.slug}" en idioma "${lang}"`);
-                                // Añadimos una marca temporal para evitar que se pierda entre otros copys
-                                onEdit({
-                                  id: '', // vacío para que se cree uno nuevo
-                                  slug: group.slug,
-                                  text: '',
-                                  language: lang,
-                                  status: 'not_assigned'
-                                });
+                                if (isAuthenticated) {
+                                  console.log(`🔴 Iniciando creación de nuevo copy para slug "${group.slug}" en idioma "${lang}"`);
+                                  // Añadimos una marca temporal para evitar que se pierda entre otros copys
+                                  onEdit({
+                                    id: '', // vacío para que se cree uno nuevo
+                                    slug: group.slug,
+                                    text: '',
+                                    language: lang,
+                                    status: 'not_assigned'
+                                  });
+                                }
                               }}
                             >
                               Crear en {lang}
+                              {!isAuthenticated && (
+                                <Tooltip label="Debe iniciar sesión para crear traducciones" placement="right">
+                                  <span style={{ marginLeft: '5px' }}>ℹ️</span>
+                                </Tooltip>
+                              )}
                             </MenuItem>
                           );
                         })}
@@ -371,14 +391,21 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                         <MenuItem 
                           icon={<span>🗑️</span>}
                           color="red.500"
+                          isDisabled={!isAuthenticated}
                           onClick={() => {
-                            // Eliminar todas las traducciones de este slug
-                            Object.values(group.translations)
-                              .filter(Boolean)
-                              .forEach(copy => copy && onDelete(copy.id));
+                            if (isAuthenticated) {
+                              // Guardar el slug y abrir el modal de confirmación
+                              setSlugToDelete(group.slug);
+                              onDeleteModalOpen();
+                            }
                           }}
                         >
                           Eliminar todas las traducciones
+                          {!isAuthenticated && (
+                            <Tooltip label="Debe iniciar sesión para realizar esta acción" placement="right">
+                              <span style={{ marginLeft: '5px' }}>ℹ️</span>
+                            </Tooltip>
+                          )}
                         </MenuItem>
                       </MenuList>
                     </Menu>
@@ -453,6 +480,56 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
             onCancel={onClose}
           />
         </ModalBody>
+      </ModalContent>
+    </Modal>
+
+    {/* Modal de confirmación para eliminar todas las traducciones */}
+    <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose}>
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader color="red.500">
+          <HStack>
+            <span>⚠️</span>
+            <Text>Confirmar eliminación</Text>
+          </HStack>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <VStack align="start" spacing={4}>
+            <Text>Está a punto de eliminar <strong>todas las traducciones</strong> del slug:</Text>
+            <Box p={3} bg="gray.100" borderRadius="md" width="100%">
+              <Text fontWeight="bold">{slugToDelete}</Text>
+            </Box>
+            <Text color="red.500" fontWeight="semibold">Esta acción no se puede deshacer.</Text>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" mr={3} onClick={onDeleteModalClose}>
+            Cancelar
+          </Button>
+          <Button 
+            colorScheme="red" 
+            onClick={() => {
+              // Eliminar todas las traducciones del slug
+              const groupToDelete = groupedCopys.find(g => g.slug === slugToDelete);
+              if (groupToDelete) {
+                Object.values(groupToDelete.translations)
+                  .filter(Boolean)
+                  .forEach(copy => copy && onDelete(copy.id));
+              }
+              onDeleteModalClose();
+              toast({
+                title: "Traducciones eliminadas",
+                description: `Se han eliminado todas las traducciones del slug "${slugToDelete}"`,
+                status: "success",
+                duration: 3000,
+                isClosable: true,
+              });
+            }}
+          >
+            Confirmar eliminación
+          </Button>
+        </ModalFooter>
       </ModalContent>
     </Modal>
     </>
