@@ -6,7 +6,6 @@ import {
   Tr,
   Th, 
   Td,
-  Badge,
   IconButton,
   HStack,
   Tooltip,
@@ -14,6 +13,8 @@ import {
   Flex
 } from '@chakra-ui/react';
 import { Copy } from '../types/copy';
+import StatusBadge from './status/StatusBadge';
+import LanguageBadge from './common/LanguageBadge';
 
 interface CopyTableProps {
   copys: Copy[];
@@ -81,8 +82,8 @@ export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit, o
               ) : copy.slug}
             </Td>
             <Td maxW="300px" isTruncated>{copy.text}</Td>
-            <Td>{copy.language === 'es' ? 'Español' : copy.language === 'en' ? 'Inglés' : copy.language}</Td>
-            <Td><Badge colorScheme={getStatusColor(copy.status)}>{copy.status}</Badge></Td>
+            <Td><LanguageBadge languageCode={copy.language} showFullName={true} /></Td>
+            <Td><StatusBadge status={copy.status as any} /></Td>
             <Td>
               <HStack spacing={2}>
                 <Tooltip label="Editar">
@@ -114,11 +115,4 @@ export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit, o
   );
 };
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'not_assigned': return 'yellow';
-    case 'assigned': return 'blue';
-    case 'translated': return 'green';
-    default: return 'gray';
-  }
-}
+// Ya no necesitamos esta función porque StatusBadge maneja los colores internamente

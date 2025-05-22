@@ -42,6 +42,8 @@ import LanguageUserSelector from '../assignment/LanguageUserSelector';
 import CopyAssignment from '../assignment/CopyAssignment';
 import { Copy } from '../../types/copy';
 import { resetToSeedData } from '../../utils/seedData';
+import RoleSelector from './RoleSelector';
+import LanguageBadge from '../common/LanguageBadge';
 
 /**
  * AdminPanel Component
@@ -134,73 +136,38 @@ export default function AdminPanel() {
         updateUser(user.id, user);
       });
     }
-  }, []); // Empty dependency array means this runs once on mount
+  }, [users, updateUser]); // Empty dependency array means this runs once on mount
 
   // Function to change user role
-  const toggleUserRole = (user: User) => {
+  const handleRoleChange = (userId: string, newRole: UserRole) => {
     if (!currentUser) return;
     
-    console.log(`Changing user role: ${user.username} from ${user.role}`);
-    
-    // Determine the next role in the sequence
-    let newRole: UserRole;
-    switch (user.role) {
-      case UserRole.ADMIN:
-        newRole = UserRole.TRANSLATOR;
-        break;
-      case UserRole.TRANSLATOR:
-        newRole = UserRole.REVIEWER;
-        break;
-      case UserRole.REVIEWER:
-        newRole = UserRole.DEVELOPER;
-        break;
-      case UserRole.DEVELOPER:
-      default:
-        newRole = UserRole.ADMIN;
+    // Buscar el usuario por ID
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      console.error(`Usuario con ID ${userId} no encontrado`);
+      return;
     }
     
-    // Update the user's role
-    updateUser(user.id, { role: newRole });
+    console.log(`Cambiando rol de usuario: ${user.username} de ${user.role} a ${newRole}`);
     
-    // Get role display name
-    const roleNames = {
-      [UserRole.ADMIN]: 'Administrador',
-      [UserRole.TRANSLATOR]: 'Traductor',
-      [UserRole.REVIEWER]: 'Revisor',
-      [UserRole.DEVELOPER]: 'Desarrollador'
-    };
-    
-    // Show success message
-    toast({
-      title: 'Rol actualizado',
-      description: `El usuario ${user.username} ahora es ${roleNames[newRole]}`,
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
+    // Actualizar el rol del usuario
+    updateUser(userId, { ...user, role: newRole });
   };
 
   // Function to delete user
   const handleDeleteUser = () => {
     if (!selectedUser || !currentUser) return;
     
-    console.log(`Attempting to delete user: ${selectedUser.username}`);
+    console.log(`Deleting user: ${selectedUser.username}`);
     
-    // Cannot delete yourself
-    if (selectedUser.id === currentUser.id) {
-      console.error('Cannot delete own user account');
-      toast({
-        title: 'Operación no permitida',
-        description: 'No puedes eliminar tu propio usuario',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      onClose();
-      return;
-    }
+    // In a real app, this would be an API call
+    // For this prototype, we just filter out the user from our local state
+    const updatedUsers = users.filter(u => u.id !== selectedUser.id);
     
-    // In a real app, we would make an API call to delete the user
+    // Update local storage (in a real app, this would be handled by the API)
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    
     console.log(`User deleted: ${selectedUser.username}`);
     
     // For this prototype, we'll just show a success message
@@ -222,22 +189,13 @@ export default function AdminPanel() {
     onOpen();
   };
 
-  // Stats for the dashboard
-  const stats = {
-    totalUsers: users.length,
-    admins: users.filter(u => u.role === UserRole.ADMIN).length,
-    translators: users.filter(u => u.role === UserRole.TRANSLATOR).length,
-    reviewers: users.filter(u => u.role === UserRole.REVIEWER).length,
-    developers: users.filter(u => u.role === UserRole.DEVELOPER).length,
-  };
-
   return (
-    <Box>
-      <Flex justify="space-between" align="center" mb={6}>
-        <Heading size="lg">Panel de Administración</Heading>
-      </Flex>
+    <Box p={5}>
+      <Heading as="h1" size="xl" mb={5}>
+        Panel de Administración
+      </Heading>
       
-      <Tabs variant="enclosed">
+      <Tabs variant="enclosed" colorScheme="blue">
         <TabList>
           <Tab>Dashboard</Tab>
           <Tab>Asignación de Copys</Tab>
@@ -248,41 +206,43 @@ export default function AdminPanel() {
         <TabPanels>
           {/* Dashboard Tab */}
           <TabPanel>
-            <Box p={5} shadow="md" borderWidth="1px" borderRadius="md">
-              <Heading fontSize="xl" mb={4}>Estadísticas Generales</Heading>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+              <Card>
+                <CardBody>
+                  <Flex align="center" mb={3}>
+                    <Icon as={AtSignIcon} boxSize={6} color="blue.500" mr={2} />
+                    <Heading size="md">Usuarios</Heading>
+                  </Flex>
+                  <Text fontSize="2xl" fontWeight="bold">{users.length}</Text>
+                  <Text color="gray.500">Total de usuarios registrados</Text>
+                </CardBody>
+              </Card>
               
-              <Box display="grid" gridTemplateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={4}>
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="blue.50">
-                  <Heading size="md" mb={2}>Usuarios Totales</Heading>
-                  <Text fontSize="2xl" fontWeight="bold" color="blue.700">{stats.totalUsers}</Text>
-                </Box>
-                
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="purple.50">
-                  <Heading size="md" mb={2}>Administradores</Heading>
-                  <Text fontSize="2xl" fontWeight="bold" color="purple.700">{stats.admins}</Text>
-                </Box>
-                
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="green.50">
-                  <Heading size="md" mb={2}>Traductores</Heading>
-                  <Text fontSize="2xl" fontWeight="bold" color="green.700">{stats.translators}</Text>
-                </Box>
-                
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="orange.50">
-                  <Heading size="md" mb={2}>Revisores</Heading>
-                  <Text fontSize="2xl" fontWeight="bold" color="orange.700">{stats.reviewers}</Text>
-                </Box>
-                
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="blue.50">
-                  <Heading size="md" mb={2}>Desarrolladores</Heading>
-                  <Text fontSize="2xl" fontWeight="bold" color="blue.700">{stats.developers}</Text>
-                </Box>
-                
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
-                  <Heading size="md" mb={2}>Otros Usuarios</Heading>
-                  <Text fontSize="2xl" fontWeight="bold" color="gray.700">
-                    {stats.totalUsers - (stats.admins + stats.translators + stats.reviewers + stats.developers)}
-                  </Text>
-                </Box>
+              <Card>
+                <CardBody>
+                  <Flex align="center" mb={3}>
+                    <Icon as={EditIcon} boxSize={6} color="green.500" mr={2} />
+                    <Heading size="md">Copys</Heading>
+                  </Flex>
+                  <Text fontSize="2xl" fontWeight="bold">{copys.length}</Text>
+                  <Text color="gray.500">Total de copys en el sistema</Text>
+                </CardBody>
+              </Card>
+              
+
+            </SimpleGrid>
+            
+            <Box mt={8}>
+              <Heading size="md" mb={4}>Actividad Reciente</Heading>
+              <Box 
+                p={4} 
+                borderWidth="1px" 
+                borderRadius="md" 
+                bg="gray.50"
+              >
+                <Text color="gray.500" fontStyle="italic">
+                  Esta sección mostrará la actividad reciente de los usuarios (en desarrollo)
+                </Text>
               </Box>
             </Box>
           </TabPanel>
@@ -306,7 +266,7 @@ export default function AdminPanel() {
                     <Th>Email</Th>
                     <Th>Rol</Th>
                     <Th>Idiomas</Th>
-                    <Th>Acciones</Th>
+                    <Th width="100px">Eliminar</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -316,23 +276,16 @@ export default function AdminPanel() {
                       <Td>{user.username}</Td>
                       <Td>{user.email}</Td>
                       <Td>
-                        <Badge 
-                          colorScheme={
-                            user.role === UserRole.ADMIN ? 'purple' :
-                            user.role === UserRole.REVIEWER ? 'orange' :
-                            user.role === UserRole.DEVELOPER ? 'blue' : 'green'
-                          }
-                        >
-                          {user.role === UserRole.ADMIN ? 'Admin' :
-                           user.role === UserRole.TRANSLATOR ? 'Traductor' :
-                           user.role === UserRole.REVIEWER ? 'Revisor' : 'Desarrollador'}
-                        </Badge>
+                        <RoleSelector 
+                          user={user} 
+                          onRoleChange={handleRoleChange} 
+                        />
                       </Td>
                       <Td>
                         {user.languages ? (
-                          <Box display="flex" gap={1}>
+                          <Box display="flex" gap={1} flexWrap="wrap">
                             {user.languages.map(lang => (
-                              <Badge key={lang} colorScheme="blue">{lang}</Badge>
+                              <LanguageBadge key={lang} languageCode={lang} size="sm" />
                             ))}
                           </Box>
                         ) : (
@@ -340,27 +293,14 @@ export default function AdminPanel() {
                         )}
                       </Td>
                       <Td>
-                        <Box display="flex" gap={2}>
-                          <Button
-                            size="sm"
-                            colorScheme={
-                              user.role === UserRole.ADMIN ? 'green' :
-                              user.role === UserRole.TRANSLATOR ? 'orange' :
-                              user.role === UserRole.REVIEWER ? 'blue' : 'purple'
-                            }
-                            onClick={() => toggleUserRole(user)}
-                          >
-                            Cambiar Rol
-                          </Button>
-                          <Button
-                            size="sm"
-                            colorScheme="red"
-                            onClick={() => confirmDelete(user)}
-                            isDisabled={user.id === currentUser?.id}
-                          >
-                            Eliminar
-                          </Button>
-                        </Box>
+                        <Button
+                          size="sm"
+                          colorScheme="red"
+                          onClick={() => confirmDelete(user)}
+                          isDisabled={user.id === currentUser?.id}
+                        >
+                          Eliminar
+                        </Button>
                       </Td>
                     </Tr>
                   ))}
