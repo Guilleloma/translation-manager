@@ -1,0 +1,39 @@
+key,en_GB,es_ES,it_IT,en_US,de_DE,fr_FR,pt_PT,pt_BR
+welcome.title,Welcome,Bienvenido,Benvenuto,Welcome,Willkommen,Bienvenue,Bem-vindo,Bem-vindo
+welcome.subtitle,Hello there,Hola,Ciao,Hi there,Hallo,Salut,Olá,Olá
+button.save,Save,Guardar,Salvare,Save,Speichern,Sauvegarder,Salvar,Salvar
+button.cancel,Cancel,Cancelar,Annulla,Cancel,Abbrechen,Annuler,Cancelar,Cancelar
+button.edit,Edit,Editar,Modificare,Edit,Bearbeiten,Éditer,Editar,Editar
+button.delete,Delete,Eliminar,Eliminare,Delete,Löschen,Supprimer,Excluir,Excluir
+button.add,Add,Añadir,Aggiungere,Add,Hinzufügen,Ajouter,Adicionar,Adicionar
+error.generic,An error occurred,Ha ocurrido un error,Si è verificato un errore,An error occurred,Ein Fehler ist aufgetreten,Une erreur s'est produite,Ocorreu um erro,Ocorreu um erro
+error.required,This field is required,Este campo es obligatorio,Questo campo è obbligatorio,This field is required,Dieses Feld ist erforderlich,Ce champ est obligatoire,Este campo é obrigatório,Este campo é obrigatório
+error.invalid,Invalid value,Valor inválido,Valore non valido,Invalid value,Ungültiger Wert,Valeur invalide,Valor inválido,Valor inválido
+form.name,Name,Nombre,Nome,Name,Name,Nom,Nome,Nome
+form.email,Email,Correo electrónico,Email,Email,E-Mail,E-mail,E-mail,E-mail
+form.password,Password,Contraseña,Password,Password,Passwort,Mot de passe,Senha,Senha
+form.confirm_password,Confirm password,Confirmar contraseña,Conferma password,Confirm password,Passwort bestätigen,Confirmer le mot de passe,Confirmar senha,Confirmar senha
+form.submit,Submit,Enviar,Invia,Submit,Absenden,Soumettre,Enviar,Enviar
+nav.home,Home,Inicio,Home,Home,Startseite,Accueil,Início,Início
+nav.about,About,Acerca de,Chi siamo,About,Über uns,À propos,Sobre,Sobre
+nav.contact,Contact,Contacto,Contatti,Contact,Kontakt,Contact,Contacto,Contato
+nav.login,Login,Iniciar sesión,Accedi,Login,Anmelden,Connexion,Iniciar sessão,Entrar
+nav.logout,Logout,Cerrar sesión,Esci,Logout,Abmelden,Déconnexion,Terminar sessão,Sair
+nav.register,Register,Registrarse,Registrati,Register,Registrieren,S'inscrire,Registar,Registrar
+nav.profile,Profile,Perfil,Profilo,Profile,Profil,Profil,Perfil,Perfil
+nav.settings,Settings,Configuración,Impostazioni,Settings,Einstellungen,Paramètres,Configurações,Configurações
+nav.dashboard,Dashboard,Panel de control,Dashboard,Dashboard,Dashboard,Tableau de bord,Painel de controle,Painel de controle
+nav.admin,Admin,Administración,Admin,Admin,Admin,Admin,Admin,Admin
+page.title.home,Home,Inicio,Home,Home,Startseite,Accueil,Início,Início
+page.title.about,About us,Sobre nosotros,Chi siamo,About us,Über uns,À propos de nous,Sobre nós,Sobre nós
+page.title.contact,Contact us,Contáctanos,Contattaci,Contact us,Kontaktiere uns,Contactez-nous,Contacte-nos,Contate-nos
+page.title.login,Login,Iniciar sesión,Accedi,Login,Anmelden,Connexion,Iniciar sessão,Entrar
+page.title.register,Register,Registrarse,Registrati,Register,Registrieren,S'inscrire,Registar,Registrar
+page.title.profile,Your profile,Tu perfil,Il tuo profilo,Your profile,Dein Profil,Votre profil,O seu perfil,Seu perfil
+page.title.settings,Settings,Configuración,Impostazioni,Settings,Einstellungen,Paramètres,Configurações,Configurações
+page.title.dashboard,Dashboard,Panel de control,Dashboard,Dashboard,Dashboard,Tableau de bord,Painel de controle,Painel de controle
+page.title.admin,Administration,Administración,Amministrazione,Administration,Administration,Administration,Administração,Administração
+footer.copyright,All rights reserved,Todos los derechos reservados,Tutti i diritti riservati,All rights reserved,Alle Rechte vorbehalten,Tous droits réservés,Todos os direitos reservados,Todos os direitos reservados
+footer.terms,Terms of service,Términos de servicio,Termini di servizio,Terms of service,Nutzungsbedingungen,Conditions d'utilisation,Termos de serviço,Termos de serviço
+footer.privacy,Privacy policy,Política de privacidad,Informativa sulla privacy,Privacy policy,Datenschutzrichtlinie,Politique de confidentialité,Política de privacidade,Política de privacidade
+footer.contact,Contact us,Contáctanos,Contattaci,Contact us,Kontaktiere uns,Contactez-nous,Contacte-nos,Contate-nos

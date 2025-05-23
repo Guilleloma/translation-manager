@@ -108,6 +108,7 @@ export default function Home() {
       if (storedCopys) {
         try {
           const parsedCopys = JSON.parse(storedCopys);
+          console.log(`Cargados ${parsedCopys.length} copys desde localStorage`);
           console.log(`✅ Cargados ${parsedCopys.length} copys desde localStorage`);
           setCopys(parsedCopys);
         } catch (error) {
@@ -247,6 +248,7 @@ export default function Home() {
   const handleSave = async (data: Omit<Copy, 'id' | 'status'>, isImport = false) => {
     console.group('💾 Guardando copy');
     console.log('Datos recibidos:', data);
+    console.log('Es importación masiva:', (data as any).isBulkImport ? 'SÍ' : 'NO');
     
     // Verificar si el usuario está autenticado
     if (!isAuthenticated && !isImport) {
@@ -259,6 +261,11 @@ export default function Home() {
         isClosable: true,
       });
       return;
+    }
+    
+    // Si es una importación masiva, registrar para debugging
+    if ((data as any).isBulkImport) {
+      console.log(`Procesando elemento de importación masiva: ${data.slug} [${data.language}]`);
     }
     
     // Activar indicador de carga si no es una importación masiva
@@ -344,19 +351,48 @@ export default function Home() {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        // Crear un nuevo copy con ID único
-        const newCopy: Copy = {
-          id: generateUniqueId(), // Generar ID único
-          status: 'not_assigned',
-          slug: data.slug || '', // No generamos slug automáticamente
-          text: data.text || `[Sin texto - ${new Date().toISOString().slice(0, 10)}]`,
-          language: data.language,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
+        // Verificar si ya existe un copy con el mismo slug y language
+        const existingCopy = copys.find(
+          c => c.slug === data.slug && c.language === data.language
+        );
         
-        // Añadir el nuevo copy al array
-        setCopys([...copys, newCopy]);
+        if (existingCopy) {
+          console.log(`Ya existe un copy con slug=${data.slug} y language=${data.language}. Actualizando...`);
+          
+          // Actualizar el copy existente
+          const updatedCopys = copys.map(c => {
+            if (c.id === existingCopy.id) {
+              return {
+                ...c,
+                text: data.text,
+                updatedAt: new Date(),
+                // Otros campos que podrían actualizarse
+              };
+            }
+            return c;
+          });
+          
+          setCopys(updatedCopys);
+        } else {
+          // Crear un nuevo copy con ID único
+          const newCopy: Copy = {
+            id: generateUniqueId(), // Generar ID único
+            status: 'not_assigned',
+            slug: data.slug || '', // No generamos slug automáticamente
+            text: data.text || `[Sin texto - ${new Date().toISOString().slice(0, 10)}]`,
+            language: data.language,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+        
+          // Añadir el nuevo copy al array
+          // Para importaciones masivas, usamos una función de actualización para evitar problemas de estado
+          if ((data as any).isBulkImport) {
+            setCopys(prevCopys => [...prevCopys, newCopy]);
+          } else {
+            setCopys([...copys, newCopy]);
+          }
+        }
         
         // Cerrar el modal de edición si está abierto
         if (editingCopy) {
@@ -376,20 +412,16 @@ export default function Home() {
         }
       }
       
-      // Actualizar localStorage
-      localStorage.setItem('copys', JSON.stringify(
-        // Si estamos editando, reemplazar el copy existente
-        editingCopy && editingCopy.id
-          ? copys.map(c => c.id === editingCopy.id ? {...c, ...data, updatedAt: new Date()} : c)
-          : // Si es nuevo, añadirlo al array
-            [...copys, {
-              id: generateUniqueId(),
-              status: 'not_assigned',
-              ...data,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            }]
-      ));
+      // Si es una importación masiva, no actualizamos localStorage inmediatamente
+      // para evitar sobrescribir importaciones previas
+      if (!(data as any).isBulkImport) {
+        // Actualizar localStorage con el estado MÁS RECIENTE de copys
+        // Importante: Usar el estado más reciente de copys para asegurar que todas las importaciones se guarden
+        setTimeout(() => {
+          console.log('Actualizando localStorage con copys:', copys.length);
+          localStorage.setItem('copys', JSON.stringify(copys));
+        }, 0); // Usar setTimeout para asegurar que se ejecute después de que el estado se haya actualizado
+      }
       
       // Forzar actualización de la UI
       setUpdateTrigger(prev => prev + 1);
