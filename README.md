@@ -267,7 +267,28 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - Docs de integración con i18n
 - Ejemplo de uso en React
 
-### Sprint 17: API REST para integración con otros servicios ⏳
+### Sprint 17: Mejoras de Usabilidad y Rendimiento ✅
+- ✅ Paginación de tablas para grandes volúmenes de datos
+  - ✅ Implementación de paginación en vista de tabla agrupada por slug
+  - ✅ Implementación de paginación en vista de lista plana
+  - ✅ Selector de elementos por página (10, 25, 50, 100, 250)
+  - ✅ Navegación intuitiva entre páginas
+  - ✅ Indicador de total de elementos y página actual
+- ✅ Mejora del feedback visual durante importaciones masivas
+  - ✅ Indicador de progreso persistente
+  - ✅ Detalles de elementos procesados, errores y advertencias
+  - ✅ Fases de importación claramente identificadas
+
+### Sprint 19: Optimización de componentes y tests ✅
+- ✅ Mejora de rendimiento en componentes de paginación
+  - ✅ Implementación de memoización para evitar re-renders innecesarios
+  - ✅ Optimización de callbacks para mejorar la respuesta de la UI
+- ✅ Refactorización de tests de rendimiento
+  - ✅ Creación de mocks para componentes complejos en tests
+  - ✅ Reducción de falsos positivos en pruebas de rendimiento
+  - ✅ Mejora en la cobertura de pruebas para componentes de paginación
+
+### Sprint 18: API REST para integración con otros servicios ⏳
 - ⏳ Endpoints REST para consumo de traducciones
   - ⏳ GET /api/translations - Obtener todas las traducciones (con filtros)
   - ⏳ GET /api/translations/:slug - Obtener traducciones por slug
@@ -281,8 +302,6 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ⏳ Webhooks para notificaciones de cambios
   - ⏳ Notificaciones de nuevas traducciones
   - ⏳ Eventos de actualización para integración con CI/CD
-  - ⏳ GET /api/translations/language/:lang - Obtener traducciones por idioma
-- ⏳ Autenticación y autorización para API
   - ⏳ Sistema de API keys para servicios
   - ⏳ Control de acceso granular (lectura/escritura)
 - ⏳ Documentación OpenAPI/Swagger
