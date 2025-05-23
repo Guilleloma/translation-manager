@@ -52,7 +52,7 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
    - Revisor valida traducciones, deja comentarios o aprueba.
    - Historial de cambios y auditoría.
 6. **Exportación y consumo:**
-   - Exporta archivos JSON/YAML listos para i18n en el frontend.
+   - Exportar archivos JSON/YAML listos para i18n en el frontend.
    - Integración directa con el pipeline de CI/CD si se desea.
 
 ---
@@ -147,17 +147,13 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Añadir copys sin slug asociado inicialmente
   - ✅ Añadir slugs sin copys asociados inicialmente
   - ✅ Asignación posterior de copys a slugs existentes
-- ✅ Carga masiva de copys/slugs
-  - ✅ Importación desde archivo CSV/Excel
-  - ✅ Validación de datos durante la importación
-  - ✅ Visualización previa antes de confirmar la importación
 
 ### Sprint 8: Soporte multilenguaje y mejoras UX ✅
 - ✅ Soporte completo para idiomas adicionales
   - ✅ Ampliado soporte para incluir: Español, Inglés, Italiano, Alemán, Francés y Portugués
   - ✅ Selección de idioma en todos los formularios
   - ✅ Placeholders dinámicos acordes al idioma seleccionado
-  - ✅ Vista de tabla con todos los idiomas soportados
+  - ✅ Vista en formato tabla para traducciones por idioma
   - ✅ Exportación JSON para todos los idiomas
   - ✅ Importación masiva compatible con todos los idiomas
 
@@ -245,34 +241,31 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ⏳ Dashboard de métricas
   - ⏳ Progreso de traducción por idioma
   - ⏳ Tiempo de traducción/revisión
-  - ⏳ Identificación de cuellos de botella
-- ⏳ Reportes de calidad y consistencia
 - ⏳ Exportación de reportes
 
 ### Sprint 13: Traducción automática con OpenAI ⏳
 - ⏳ Integración backend proxy seguro para OpenAI
 - ⏳ Botón de sugerir traducción automática
 - ⏳ Configuración de parámetros para ajustar traducciones
-- ⏳ Feedback visual para traducciones automáticas
-- ⏳ Historial de sugerencias de traducción
 
 ### Sprint 14: Exportación a Google Sheets ✅
 - ✅ Exportación en formato compatible con Google Sheets
   - ✅ Estructura con columnas: slug, en_GB, es_ES, it_IT, en_US, de_DE, fr_FR, pt_PT, pt_BR
   - ✅ Exportación directa a archivo CSV
   - ✅ Documentación con instrucciones para importar a Google Sheets
-- ⏳ Mejoras pendientes para futuras iteraciones:
-  - ⏳ Vista previa de la estructura de exportación
-  - ⏳ Filtros para exportar solo slugs específicos
-  - ⏳ Opciones avanzadas para seleccionar múltiples idiomas a incluir
 
-### Sprint 15: Exportación avanzada y CI/CD ⏳
+### Sprint 15: Importación y Exportación ✅
+- ✅ Importación columnar (formato de tabla con key y columnas por idioma)
+  - ✅ Soporte para archivos CSV y Excel con formato columnar
+  - ✅ Validación flexible de keys y traducciones
+  - ✅ Paginación para manejar grandes volúmenes de datos
+  - ✅ Detección de duplicados y manejo de errores
 - ⏳ Exportación YAML
 - ⏳ GitHub Actions: lint, test, validación, build y deploy
 
-### Sprint 16: Documentación y ejemplos de integración frontend ⏳
-- ⏳ Docs de integración con i18n
-- ⏳ Ejemplo de uso en React
+### Sprint 16: Documentación y ejemplos de integración frontend 
+- Docs de integración con i18n
+- Ejemplo de uso en React
 
 ### Sprint 17: API REST para integración con otros servicios ⏳
 - ⏳ Endpoints REST para consumo de traducciones
@@ -288,18 +281,142 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ⏳ Webhooks para notificaciones de cambios
   - ⏳ Notificaciones de nuevas traducciones
   - ⏳ Eventos de actualización para integración con CI/CD
+  - ⏳ GET /api/translations/language/:lang - Obtener traducciones por idioma
+- ⏳ Autenticación y autorización para API
+  - ⏳ Sistema de API keys para servicios
+  - ⏳ Control de acceso granular (lectura/escritura)
+- ⏳ Documentación OpenAPI/Swagger
+  - ⏳ Interfaz interactiva para probar endpoints
+  - ⏳ Ejemplos de integración en diferentes lenguajes
+- ⏳ Webhooks para notificaciones de cambios
+  - ⏳ Notificaciones de nuevas traducciones
+  - ⏳ Eventos de actualización para integración con CI/CD
 
----
+### Sprint 18: Optimización de rendimiento para importaciones masivas ✅
+- ✅ Procesamiento en lotes para archivos grandes (>2000 traducciones)
+  - ✅ División en lotes de 100 elementos para evitar bloqueo de UI
+  - ✅ Pausas entre lotes para mantener responsividad
+  - ✅ Actualización optimizada de localStorage al final del proceso
+- ✅ Indicadores de progreso mejorados
+  - ✅ Notificaciones de inicio y progreso durante importación
+  - ✅ Feedback visual con porcentaje de completado
+  - ✅ Resumen detallado al finalizar importación
+- ✅ Manejo mejorado de duplicados
+  - ✅ Detección y actualización de traducciones existentes
+  - ✅ Validación por combinación slug+idioma
+  - ✅ Logs detallados para debugging
 
 ---
 
 ## Alcance
 
-- Importar archivos Excel/CSV con copys y traducciones.
+- Importar archivos Excel/CSV con copys y traducciones:
+  - Formato columnar: archivo con columna 'key' y columnas para cada idioma (ej: 'en_GB', 'es_ES', etc.)
+  - Validación flexible de keys y traducciones que permite diferentes formatos de archivo
+  - Detección de duplicados con manejo inteligente de errores y advertencias
+  - Paginación para manejar grandes volúmenes de datos (cientos o miles de traducciones)
 - Validar y convertir datos a archivos JSON/YAML por idioma.
+
+## Pasos para probar la funcionalidad
+
+### Importación masiva optimizada (Sprint 18)
+
+#### Cómo acceder a la funcionalidad:
+1. Abrir la aplicación en http://localhost:3000
+2. Cambiar a la vista "Tabla" usando el selector en la parte superior
+3. Hacer clic en el botón "Importar" en la esquina superior derecha
+
+#### Datos de prueba necesarios:
+- Archivo CSV con formato columnar: `ejemplo_importacion_columnar_completo.csv` (2335 traducciones)
+- Credenciales de usuario: cualquier usuario autenticado puede realizar importaciones
+
+#### Pasos secuenciales para probar:
+
+1. **Preparar el archivo de prueba**
+   - Usar el archivo `ejemplo_importacion_columnar_completo.csv` incluido en el proyecto
+   - Verificar que contiene las columnas: key, ES_ES, EN_GB, FR_FR, IT_IT, DE_DE, PT_PT, PT_BR
+
+2. **Iniciar la importación**
+   - Seleccionar el archivo en el formulario de importación
+   - Hacer clic en "Subir archivo"
+   - **Comportamiento esperado**: El archivo se procesa y muestra una vista previa con estadísticas
+
+3. **Confirmar la importación**
+   - Revisar las estadísticas mostradas (válidos, advertencias, errores)
+   - Hacer clic en "Importar datos"
+   - **Comportamiento esperado**: 
+     - Aparece notificación "Iniciando importación"
+     - Se muestran notificaciones de progreso cada 5 lotes
+     - El proceso se completa en menos de 30 segundos
+
+4. **Verificar el resultado**
+   - **Comportamiento esperado**:
+     - Notificación final: "Importación masiva completada"
+     - Resumen: "Se han importado X traducciones (Y slugs) correctamente"
+     - La tabla se actualiza mostrando todas las traducciones importadas
+     - Los logs de consola muestran el progreso detallado
+
+5. **Probar rendimiento con archivos grandes**
+   - Repetir el proceso con archivos de diferentes tamaños
+   - **Comportamiento esperado**: 
+     - Archivos de hasta 5000 traducciones se procesan sin bloquear la UI
+     - El progreso se muestra de manera fluida
+     - La aplicación permanece responsiva durante todo el proceso
+
+#### Casos de prueba adicionales:
+
+- **Importación de duplicados**: Importar el mismo archivo dos veces
+  - **Comportamiento esperado**: Las traducciones existentes se actualizan
+- **Archivos con errores**: Usar archivos con formato incorrecto
+  - **Comportamiento esperado**: Se muestran errores específicos y se procesan solo las filas válidas
+- **Cancelación durante importación**: Cerrar el modal durante la importación
+  - **Comportamiento esperado**: El proceso continúa en segundo plano y se completa
+
+---
+
+## Instrucciones para probar la importación columnar
+
+### Acceso a la funcionalidad
+1. Inicia sesión en la aplicación
+2. Navega a la sección de "Copys" o "Traducciones"
+3. Haz clic en el botón "Importar" o "Importación masiva"
+
+### Datos de prueba necesarios
+- Archivo CSV o Excel (.xlsx, .xls) con el siguiente formato:
+  - Primera columna: `key` (identificador único para cada traducción)
+  - Columnas adicionales: códigos de idioma (ej: `en_GB`, `es_ES`, `fr_FR`, etc.)
+  - Cada fila debe contener una key y al menos una traducción
+- Ejemplo de archivo: `ejemplo_importacion_columnar.csv`
+
+### Pasos para probar
+1. **Selección de archivo**:
+   - Haz clic en el selector de archivos
+   - Selecciona un archivo CSV o Excel con el formato columnar
+   - El sistema procesará el archivo y mostrará una vista previa
+
+2. **Revisión de datos**:
+   - Revisa la tabla de vista previa que muestra las keys y traducciones
+   - Verifica los contadores de filas válidas, advertencias y errores
+   - Usa los controles de paginación para navegar entre las páginas si hay muchos datos
+
+3. **Manejo de errores y advertencias**:
+   - Las filas con errores se marcan en rojo (no se importarán)
+   - Las filas con advertencias se marcan en amarillo (se pueden importar)
+   - Revisa la columna "Errores" para ver detalles de los problemas
+
+4. **Confirmación de importación**:
+   - Haz clic en "Importar X copys" para proceder
+   - Si hay duplicados, se mostrará un diálogo de confirmación
+   - Confirma para sobrescribir o cancela para volver a la vista previa
+
+### Comportamiento esperado
+- **Archivos grandes**: El sistema debe manejar eficientemente archivos con cientos o miles de traducciones gracias a la paginación
+- **Validación flexible**: Se aceptan diferentes formatos de archivo mientras contengan una columna para key y columnas para idiomas
+- **Manejo de duplicados**: El sistema detecta keys duplicadas y solicita confirmación antes de sobrescribir
+- **Feedback visual**: Los estados (válido, advertencia, error) se muestran claramente con colores distintivos
+- **Notificaciones**: El sistema muestra notificaciones sobre el resultado del proceso
 - Dashboard para detectar y corregir errores comunes (slugs duplicados, copys sin traducir, inconsistencias, etc.).
 - Edición y búsqueda de copys desde la interfaz.
-- Sugerencia de traducciones automáticas vía OpenAI (ChatGPT).
 - Exportación de archivos de traducción limpios.
 - Control de acceso básico.
 - Integración con CI/CD para validaciones automáticas y despliegue.

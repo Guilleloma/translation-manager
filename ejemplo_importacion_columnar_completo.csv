@@ -1,0 +1,39 @@
+key,ES_ES,EN_GB,FR_FR,IT_IT,DE_DE,PT_PT,PT_BR
+welcome.title,Bienvenido,Welcome,Bienvenue,Benvenuto,Willkommen,Bem-vindo,Bem-vindo
+welcome.subtitle,Hola,Hello there,Salut,Ciao,Hallo,Olá,Olá
+button.save,Guardar,Save,Sauvegarder,Salvare,Speichern,Salvar,Salvar
+button.cancel,Cancelar,Cancel,Annuler,Annulla,Abbrechen,Cancelar,Cancelar
+button.edit,Editar,Edit,Éditer,Modificare,Bearbeiten,Editar,Editar
+button.delete,Eliminar,Delete,Supprimer,Eliminare,Löschen,Excluir,Excluir
+button.add,Añadir,Add,Ajouter,Aggiungere,Hinzufügen,Adicionar,Adicionar
+error.generic,Ha ocurrido un error,An error occurred,Une erreur s'est produite,Si è verificato un errore,Ein Fehler ist aufgetreten,Ocorreu um erro,Ocorreu um erro
+error.required,Este campo es obligatorio,This field is required,Ce champ est obligatoire,Questo campo è obbligatorio,Dieses Feld ist erforderlich,Este campo é obrigatório,Este campo é obrigatório
+error.invalid,Valor inválido,Invalid value,Valeur invalide,Valore non valido,Ungültiger Wert,Valor inválido,Valor inválido
+form.name,Nombre,Name,Nom,Nome,Name,Nome,Nome
+form.email,Correo electrónico,Email,E-mail,Email,E-Mail,E-mail,E-mail
+form.password,Contraseña,Password,Mot de passe,Password,Passwort,Senha,Senha
+form.confirm_password,Confirmar contraseña,Confirm password,Confirmer le mot de passe,Conferma password,Passwort bestätigen,Confirmar senha,Confirmar senha
+form.submit,Enviar,Submit,Soumettre,Invia,Absenden,Enviar,Enviar
+nav.home,Inicio,Home,Accueil,Home,Startseite,Início,Início
+nav.about,Acerca de,About,À propos,Chi siamo,Über uns,Sobre,Sobre
+nav.contact,Contacto,Contact,Contact,Contatti,Kontakt,Contacto,Contato
+nav.login,Iniciar sesión,Login,Connexion,Accedi,Anmelden,Iniciar sessão,Entrar
+nav.logout,Cerrar sesión,Logout,Déconnexion,Esci,Abmelden,Terminar sessão,Sair
+nav.register,Registrarse,Register,S'inscrire,Registrati,Registrieren,Registar,Registrar
+nav.profile,Perfil,Profile,Profil,Profilo,Profil,Perfil,Perfil
+nav.settings,Configuración,Settings,Paramètres,Impostazioni,Einstellungen,Configurações,Configurações
+nav.dashboard,Panel de control,Dashboard,Tableau de bord,Dashboard,Dashboard,Painel de controle,Painel de controle
+nav.admin,Administración,Admin,Admin,Admin,Admin,Admin,Admin
+page.title.home,Inicio,Home,Accueil,Home,Startseite,Início,Início
+page.title.about,Sobre nosotros,About us,À propos de nous,Chi siamo,Über uns,Sobre nós,Sobre nós
+page.title.contact,Contáctanos,Contact us,Contactez-nous,Contattaci,Kontaktiere uns,Contacte-nos,Contate-nos
+page.title.login,Iniciar sesión,Login,Connexion,Accedi,Anmelden,Iniciar sessão,Entrar
+page.title.register,Registrarse,Register,S'inscrire,Registrati,Registrieren,Registar,Registrar
+page.title.profile,Tu perfil,Your profile,Votre profil,Il tuo profilo,Dein Profil,O seu perfil,Seu perfil
+page.title.settings,Configuración,Settings,Paramètres,Impostazioni,Einstellungen,Configurações,Configurações
+page.title.dashboard,Panel de control,Dashboard,Tableau de bord,Dashboard,Dashboard,Painel de controle,Painel de controle
+page.title.admin,Administración,Administration,Administration,Amministrazione,Administration,Administração,Administração
+footer.copyright,Todos los derechos reservados,All rights reserved,Tous droits réservés,Tutti i diritti riservati,Alle Rechte vorbehalten,Todos os direitos reservados,Todos os direitos reservados
+footer.terms,Términos de servicio,Terms of service,Conditions d'utilisation,Termini di servizio,Nutzungsbedingungen,Termos de serviço,Termos de serviço
+footer.privacy,Política de privacidad,Privacy policy,Politique de confidentialité,Informativa sulla privacy,Datenschutzrichtlinie,Política de privacidade,Política de privacidade
+footer.contact,Contáctanos,Contact us,Contactez-nous,Contattaci,Kontaktiere uns,Contacte-nos,Contate-nos

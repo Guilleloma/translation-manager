@@ -58,7 +58,7 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
   onDelete,
   onSave,
   onViewHistory,
-  languages = ['es', 'en'] 
+  languages = ['es', 'en', 'fr', 'it', 'de', 'pt', 'pt-br'] // Incluir todos los idiomas soportados por defecto
 }) => {
   const { isAuthenticated } = useUser(); // Obtener el estado de autenticación
   const { isOpen: isDeleteModalOpen, onOpen: onDeleteModalOpen, onClose: onDeleteModalClose } = useDisclosure(); // Para el modal de confirmación
@@ -84,10 +84,15 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
     // Agrupar copys por idioma para mejor visualización
     copys.forEach(copy => {
       if (byLanguage[copy.language]) {
+        // Verificar que copy.text existe antes de usar substring
+        const textPreview = copy.text 
+          ? copy.text.substring(0, 20) + (copy.text.length > 20 ? '...' : '')
+          : '[sin texto]';
+          
         byLanguage[copy.language].push({
           id: copy.id,
           slug: copy.slug,
-          text: copy.text.substring(0, 20) + (copy.text.length > 20 ? '...' : '')
+          text: textPreview
         });
       }
     });
@@ -109,7 +114,11 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
   }, [showLanguages]);
   
   // Creamos una key para cada copy basada en sus datos, para detectar cambios reales
-  const getCopyKey = (copy: Copy) => `${copy.id}-${copy.slug}-${copy.language}-${copy.text.substring(0, 10)}`;
+  const getCopyKey = (copy: Copy) => {
+    // Verificar que copy.text existe antes de usar substring
+    const textPreview = copy.text ? copy.text.substring(0, 10) : '';
+    return `${copy.id}-${copy.slug}-${copy.language}-${textPreview}`;
+  };
   
   // Agrupar copys por slug - Implementación completamente rediseñada para evitar bugs
   // Se calcula desde cero en cada render para garantizar que refleje el estado actual
@@ -161,7 +170,14 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
       if (groupedTable[copy.slug]) {
         // Asignar el copy al slot correspondiente por idioma
         groupedTable[copy.slug].translations[copy.language] = copy;
-        console.log(`✅ Asignado correctamente: ${copy.slug} [${copy.language}] = "${copy.text.substring(0, 15)}${copy.text.length > 15 ? '...' : ''}"`); 
+        
+        // Verificar que copy.text existe antes de usar substring
+        const textPreview = copy.text 
+          ? `"${copy.text.substring(0, 15)}${copy.text.length > 15 ? '...' : ''}"`
+          : '[sin texto]';
+          
+        console.log(`✅ Asignado correctamente: ${copy.slug} [${copy.language}] = ${textPreview}`);
+ 
       } else {
         console.error(`❌ Error: No se encontró el slug "${copy.slug}" en la tabla agrupada`);
       }
@@ -190,14 +206,28 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
   
   // Para ordenar los idiomas, 'es' y 'en' primero, luego el resto alfabéticamente
   const sortedLanguages = useMemo(() => {
-    return languages.sort((a, b) => {
+    // Obtener todos los idiomas únicos de los copys
+    const uniqueLanguages = new Set<string>();
+    
+    // Agregar los idiomas predeterminados
+    languages.forEach(lang => uniqueLanguages.add(lang));
+    
+    // Agregar los idiomas de los copys
+    copys.forEach(copy => {
+      if (copy.language) {
+        uniqueLanguages.add(copy.language);
+      }
+    });
+    
+    // Convertir a array y ordenar
+    return Array.from(uniqueLanguages).sort((a, b) => {
       if (a === 'es') return -1;
       if (b === 'es') return 1;
       if (a === 'en') return -1;
       if (b === 'en') return 1;
       return a.localeCompare(b);
     });
-  }, [languages]);
+  }, [languages, copys]);
   
   return (
     <>
@@ -432,23 +462,87 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
           <BulkImportForm 
             existingCopys={copys}
             onImportComplete={(newCopys) => {
-              // Verificar si tenemos la función onSave para procesar los nuevos copys
-              if (onSave) {
+              // Procesar las importaciones
+              const processImport = async () => {
                 try {
-                  // Procesamos todos los copys de una sola vez para mantener consistencia
-                  let importedCount = 0;
+                  console.log(`Iniciando importación masiva de ${newCopys.length} traducciones...`);
                   
-                  // Importamos todos los copys en un bucle pero sin mostrar notificaciones individuales
-                  newCopys.forEach(newCopy => {
-                    // Añadimos la propiedad isBulkImport para que handleSave no muestre notificaciones individuales
-                    onSave({...newCopy, isBulkImport: true});
-                    importedCount++;
+                  // Mostrar indicador de progreso
+                  toast({
+                    title: 'Iniciando importación',
+                    description: `Procesando ${newCopys.length} traducciones...`,
+                    status: 'info',
+                    duration: 3000,
+                    isClosable: true,
+                  });
+                  
+                  // Estadísticas para el resumen
+                  let importedCount = 0;
+                  const importedSlugs = new Set<string>();
+                  const slugGroups: Record<string, {count: number, languages: string[]}> = {};
+                  
+                  // Procesar en lotes para mejorar el rendimiento
+                  const BATCH_SIZE = 100; // Procesar 100 elementos a la vez
+                  const totalBatches = Math.ceil(newCopys.length / BATCH_SIZE);
+                  
+                  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+                    const startIndex = batchIndex * BATCH_SIZE;
+                    const endIndex = Math.min(startIndex + BATCH_SIZE, newCopys.length);
+                    const batch = newCopys.slice(startIndex, endIndex);
+                    
+                    console.log(`Procesando lote ${batchIndex + 1}/${totalBatches} (${batch.length} elementos)`);
+                    
+                    // Mostrar progreso cada 5 lotes
+                    if (batchIndex % 5 === 0) {
+                      toast({
+                        title: `Progreso: ${Math.round((batchIndex / totalBatches) * 100)}%`,
+                        description: `Procesando lote ${batchIndex + 1} de ${totalBatches}`,
+                        status: 'info',
+                        duration: 1000,
+                        isClosable: true,
+                      });
+                    }
+                    
+                    // Procesar cada elemento del lote
+                    batch.forEach((newCopy) => {
+                      // Estadísticas para el resumen
+                      if (!slugGroups[newCopy.slug]) {
+                        slugGroups[newCopy.slug] = {count: 0, languages: []};
+                      }
+                      slugGroups[newCopy.slug].count++;
+                      slugGroups[newCopy.slug].languages.push(newCopy.language);
+                      
+                      // Añadimos la propiedad isBulkImport para que handleSave no muestre notificaciones individuales
+                      onSave({...newCopy, isBulkImport: true});
+                      importedCount++;
+                      importedSlugs.add(newCopy.slug);
+                    });
+                    
+                    // Pequeña pausa entre lotes para no bloquear la UI
+                    if (batchIndex < totalBatches - 1) {
+                      await new Promise(resolve => setTimeout(resolve, 5));
+                    }
+                  }
+                  
+                  // Actualizar localStorage al final de todo el proceso
+                  setTimeout(() => {
+                    const currentCopys = JSON.parse(localStorage.getItem('copys') || '[]');
+                    console.log(`Actualizando localStorage con ${currentCopys.length} copys totales`);
+                    localStorage.setItem('copys', JSON.stringify(currentCopys));
+                  }, 100);
+                  
+                  // Mostrar resumen de la importación para debugging
+                  console.log(`Resumen de importación:`);
+                  console.log(`- Total de traducciones: ${importedCount}`);
+                  console.log(`- Total de slugs únicos: ${importedSlugs.size}`);
+                  Object.entries(slugGroups).forEach(([slug, data]) => {
+                    console.log(`  - ${slug}: ${data.count} traducciones en ${data.languages.join(', ')}`);
                   });
                   
                   // Mostramos una única notificación al final del proceso
                   toast({
                     title: 'Importación masiva completada',
-                    description: `Se han importado ${importedCount} copys correctamente en un solo proceso`,
+                    description: `Se han importado ${importedCount} traducciones (${importedSlugs.size} slugs) correctamente`,
                     status: 'success',
                     duration: 5000,
                     isClosable: true,
@@ -466,16 +560,10 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                     isClosable: true,
                   });
                 }
-              } else {
-                console.error('No se proporcionó onSave en CopyTableView');
-                toast({
-                  title: 'Error en la importación',
-                  description: 'No se pudo completar la importación debido a un error de configuración',
-                  status: 'error',
-                  duration: 5000,
-                  isClosable: true,
-                });
-              }
+              };
+              
+              // Ejecutar la función asíncrona
+              processImport();
             }}
             onCancel={onClose}
           />
