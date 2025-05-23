@@ -46,13 +46,27 @@ import { CopyForm } from '../components/CopyForm';
 import { Copy, CopyInput, CopyStatus, UserRole, CopyHistory } from '../types/copy';
 import { TranslationStatus } from '../components/status/TranslationStatus';
 import HistoryModal from '../components/history/HistoryModal';
-import { CopyTable } from '../components/CopyTable';
+import CopyTable from '../components/CopyTable';
 import { CopyTableView } from "../components/CopyTableView";
 import { slugify } from "../utils/slugify";
+import { ImportProgressIndicator } from '../components/common/ImportProgressIndicator';
+import { useImportProgress } from '../hooks/useImportProgress';
 import { downloadGoogleSheetsCSV } from "../utils/exportToGoogleSheets";
 
 export default function Home() {
   const { currentUser, isAuthenticated } = useUser();
+  
+  // Hook para manejar el progreso de importación masiva
+  const {
+    progress: importProgress,
+    startImport,
+    updateProgress,
+    startImporting,
+    completeImport,
+    failImport,
+    dismissProgress
+  } = useImportProgress();
+  
   // Estado principal de la aplicación
   const [copys, setCopys] = useState<Copy[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -475,6 +489,11 @@ export default function Home() {
           // Si la propiedad no existe, la creamos como objeto vacío
           if (!current[key]) {
             current[key] = {};
+          } else if (typeof current[key] === 'string') {
+            // Si ya existe un string en esta ruta, guardamos su valor y lo convertimos en objeto
+            console.log(`Conflicto en la ruta: ${path.join('.')} - El valor '${current[key]}' será reemplazado por un objeto`);
+            const oldValue = current[key];
+            current[key] = { '_value': oldValue };
           }
           // Continuamos recorriendo el objeto anidado
           current = current[key];
@@ -486,6 +505,7 @@ export default function Home() {
       };
       
       // Procesar cada copy para construir el objeto anidado
+      console.log('Procesando datos para exportación JSON...');
       dataToExport.forEach((copy) => {
         if (!byLanguage[copy.language]) {
           byLanguage[copy.language] = {};
@@ -494,8 +514,16 @@ export default function Home() {
         // Dividir el slug por puntos para crear la estructura anidada
         const slugParts = copy.slug.split('.');
         
-        // Crear estructura anidada
-        setNestedProperty(byLanguage[copy.language], slugParts, copy.text);
+        // Añadir log para depuración
+        console.log(`Procesando slug: ${copy.slug} (${copy.language})`);
+        
+        try {
+          // Crear estructura anidada
+          setNestedProperty(byLanguage[copy.language], slugParts, copy.text);
+        } catch (error) {
+          console.error(`Error al procesar slug: ${copy.slug}`, error);
+          // Continuar con el siguiente copy en lugar de abortar toda la exportación
+        }
       });
       
       const jsonStr = JSON.stringify(byLanguage, null, 2);
@@ -645,351 +673,368 @@ export default function Home() {
   };
 
   return (
-    <Container maxW="container.lg" py={8}>
-      <HStack mb={4} justifyContent="space-between" alignItems="center">
-        <Heading>Gestión de Copys</Heading>
-        <HStack spacing={3}>
-          <Tooltip 
-            label="Debe iniciar sesión para crear copys" 
-            isDisabled={isAuthenticated}
-            hasArrow
-            placement="top"
-          >
-            <Button
-              leftIcon={<AddIcon />}
-              colorScheme="green"
-              onClick={() => {
-                // Verificar si el usuario está autenticado
-                if (!isAuthenticated) {
-                  toast({
-                    title: "Acción no permitida",
-                    description: "Debe iniciar sesión para crear copys",
-                    status: "warning",
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                  return;
-                }
-                
-                setEditingCopy(null); // Asegurarse de que no hay un copy en edición
-                onEditOpen();
-              }}
-              isDisabled={!isAuthenticated}
-              _disabled={{
-                opacity: 0.6,
-                cursor: "not-allowed"
-              }}
-            >
-              Create Copy
-            </Button>
-          </Tooltip>
-          <Tooltip
-            label="Debe iniciar sesión para importar copys"
-            isDisabled={isAuthenticated}
-            hasArrow
-            placement="top"
-          >
-            <Button 
-              colorScheme="teal" 
-              leftIcon={<span>📥</span>}
-              onClick={() => {
-                // Verificar si el usuario está autenticado
-                if (!isAuthenticated) {
-                  toast({
-                    title: "Acción no permitida",
-                    description: "Debe iniciar sesión para importar copys",
-                    status: "warning",
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                  return;
-                }
-                
-                // Abrir la vista de tabla si no está activa
-                if (viewMode !== "table") {
-                  setViewMode("table");
-                }
-                // Simulamos un clic en el botón de importación del CopyTableView
-                // Esto se manejará cuando se renderice el componente
-                setTimeout(() => {
-                  const importButton = document.querySelector('[data-testid="bulk-import-button"]');
-                  if (importButton) {
-                    (importButton as HTMLButtonElement).click();
-                  }
-                }, 100);
-              }}
-              isDisabled={!isAuthenticated}
-              _disabled={{
-                opacity: 0.6,
-                cursor: "not-allowed"
-              }}
-            >
-            Bulk Import
-          </Button>
-          </Tooltip>
-        </HStack>
-      </HStack>
-      
-      {/* Modal de creación/edición */}
-      <Modal isOpen={isEditOpen} onClose={cancelEdit} size="xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>{editingCopy ? "Editar Copy" : "Crear Copy"}</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <CopyForm
-              existingCopys={copys.filter(c => editingCopy ? c.id !== editingCopy.id : true)}
-              onSave={(data) => {
-                handleSave(data, !!editingCopy);
-                onEditClose();
-              }}
-              onStatusChange={handleStatusChange}
-              onAddComment={(copyId, comment) => {
-                // Implementar lógica para agregar comentarios si es necesario
-                console.log('Agregando comentario:', { copyId, comment });
-              }}
-              onTagsChange={(copyId, tags) => {
-                // Implementar lógica para actualizar etiquetas si es necesario
-                console.log('Actualizando etiquetas:', { copyId, tags });
-              }}
-              onCancel={cancelEdit}
-              initialValues={editingCopy || {}}
-              isEditing={!!editingCopy}
-              // Pasar el setter de currentLanguage al formulario
-              onLanguageChange={setCurrentLanguage}
-            />
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={cancelEdit}>
-              Cancelar
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-      
-      {/* Sección de búsqueda y filtros */}
-      <Box mb={6}>
-        <VStack spacing={4} align="stretch">
-          {/* Fila 1: Búsqueda y filtros */}
-          <Flex direction={{ base: "column", md: "row" }} gap={4} align="center">
-            <InputGroup maxW={{ base: "100%", md: "400px" }}>
-              <InputLeftElement pointerEvents="none">
-                <SearchIcon color="gray.300" />
-              </InputLeftElement>
-              <Input
-                placeholder="Buscar por texto o slug..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </InputGroup>
-            
-            <HStack spacing={4} flexWrap="wrap">
-              {/* Filtro por estado */}
-              <Select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value as CopyStatus | "all")}
-                width={{ base: "100%", md: "200px" }}
-                placeholder="Filtrar por estado"
-              >
-                <option value="all">Todos los estados</option>
-                <option value="not_assigned">Sin asignar</option>
-                <option value="assigned">Asignados</option>
-                <option value="translated">Traducidos</option>
-                <option value="reviewed">Revisados</option>
-                <option value="approved">Aprobados</option>
-                <option value="rejected">Rechazados</option>
-              </Select>
-              
-              {/* Filtro por etiqueta */}
-              <Select
-                value={tagFilter}
-                onChange={(e) => setTagFilter(e.target.value)}
-                width={{ base: "100%", md: "200px" }}
-                placeholder="Filtrar por etiqueta"
-              >
-                <option value="all">Todas las etiquetas</option>
-                {availableTags.map(tag => (
-                  <option key={tag} value={tag}>{tag.charAt(0).toUpperCase() + tag.slice(1)}</option>
-                ))}
-              </Select>
-            </HStack>
-          </Flex>
-          
-          {/* Fila 2: Vistas y exportación */}
-          <Flex direction={{ base: "column", md: "row" }} justify="space-between" align="center" gap={4}>
-            {/* Botones de vista */}
-            <HStack spacing={2}>
-              <Text fontWeight="medium" fontSize="sm">Vista:</Text>
-              <Button
-                size="sm"
-                colorScheme={viewMode === "list" ? "blue" : "gray"}
-                variant={viewMode === "list" ? "solid" : "outline"}
-                onClick={() => setViewMode("list")}
-                leftIcon={<span>📋</span>}
-              >
-                Lista
-              </Button>
-              <Button
-                size="sm"
-                colorScheme={viewMode === "table" ? "blue" : "gray"}
-                variant={viewMode === "table" ? "solid" : "outline"}
-                onClick={() => setViewMode("table")}
-                leftIcon={<span>📊</span>}
-              >
-                Tabla
-              </Button>
-            </HStack>
-            
-            {/* Exportación */}
-            <HStack spacing={3}>
-              <Text fontWeight="medium" fontSize="sm">Exportar:</Text>
-              {/* Selector de idiomas para exportación */}
-              <Select 
-                value={exportLanguage} 
-                onChange={(e) => setExportLanguage(e.target.value)}
-                size="sm"
-                width="130px"
-              >
-                <option value="all">Todos</option>
-                <option value="es">Español</option>
-                <option value="en">Inglés</option>
-                <option value="pt">Portugués</option>
-                <option value="fr">Francés</option>
-                <option value="it">Italiano</option>
-                <option value="de">Alemán</option>
-              </Select>
-              
-              <Button
-                size="sm"
-                colorScheme="blue"
-                onClick={exportToJson}
-                isDisabled={copys.length === 0 || isExporting}
-                isLoading={isExporting}
-                loadingText="Exportando..."
-              >
-                Exportar JSON
-              </Button>
-              <Button
-                size="sm"
-                colorScheme="green"
-                onClick={exportToGoogleSheets}
-                isDisabled={copys.length === 0 || isExporting}
-                isLoading={isExporting}
-                loadingText="Exportando..."
-                leftIcon={!isExporting ? <span>📊</span> : undefined}
-              >
-                Google Sheets
-              </Button>
-            </HStack>
-          </Flex>
-        </VStack>
-      </Box>
-      
-      {/* Indicador de carga durante la carga inicial */}
-      {isLoading ? (
-        <Box textAlign="center" py={10}>
-          <VStack spacing={4}>
-            <Text fontSize="lg">Cargando datos...</Text>
-            <Box>
-              <span role="img" aria-label="loading" style={{ fontSize: '2rem' }}>⏳</span>
-            </Box>
-          </VStack>
-        </Box>
-      ) : viewMode === "list" ? (
-        <>
-          <CopyTable 
-            copys={filteredCopys} 
-            onDelete={handleDeleteConfirmation} 
-            onEdit={handleEdit} 
-            onViewHistory={handleViewHistory}
-          />
-          
-          {/* Contador de resultados para vista lista */}
-          <Text mt={2} fontSize="sm" color="gray.600">
-            {filteredCopys.length === copys.length
-              ? `Mostrando ${copys.length} copys`
-              : `Mostrando ${filteredCopys.length} de ${copys.length} copys`}
-          </Text>
-        </>
-      ) : (
-        <CopyTableView 
-          copys={filteredCopys}
-          onDelete={handleDeleteConfirmation}
-          onEdit={handleEdit}
-          onViewHistory={handleViewHistory}
-          onSave={(data) => handleSave(data, false)} // Pasamos handleSave para la importación masiva
-          languages={["es", "en", "pt", "fr", "it", "de"]} // Todos los idiomas soportados
-        />
-      )}
-      
-      {/* Modal de historial */}
-      <HistoryModal
-        copy={selectedHistoryCopy}
-        isOpen={isHistoryOpen}
-        onClose={onHistoryClose}
+    <>
+      {/* Indicador de progreso fijo para importaciones masivas */}
+      <ImportProgressIndicator 
+        progress={importProgress} 
+        onDismiss={dismissProgress}
       />
       
-      {/* Modal de confirmación para eliminar copy */}
-      <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader color="red.500">
-            <HStack>
-              <span>⚠️</span>
-              <Text>Confirmar eliminación</Text>
+      {/* Contenido principal con margen superior cuando hay progreso activo */}
+      <Box pt={importProgress.isActive ? "60px" : "0"} transition="padding-top 0.3s ease">
+        <Container maxW="container.lg" py={8}>
+          <HStack mb={4} justifyContent="space-between" alignItems="center">
+            <Heading>Gestión de Copys</Heading>
+            <HStack spacing={3}>
+              <Tooltip 
+                label="Debe iniciar sesión para crear copys" 
+                isDisabled={isAuthenticated}
+                hasArrow
+                placement="top"
+              >
+                <Button
+                  leftIcon={<AddIcon />}
+                  colorScheme="green"
+                  onClick={() => {
+                    // Verificar si el usuario está autenticado
+                    if (!isAuthenticated) {
+                      toast({
+                        title: "Acción no permitida",
+                        description: "Debe iniciar sesión para crear copys",
+                        status: "warning",
+                        duration: 3000,
+                        isClosable: true,
+                      });
+                      return;
+                    }
+                    
+                    setEditingCopy(null); // Asegurarse de que no hay un copy en edición
+                    onEditOpen();
+                  }}
+                  isDisabled={!isAuthenticated}
+                  _disabled={{
+                    opacity: 0.6,
+                    cursor: "not-allowed"
+                  }}
+                >
+                  Create Copy
+                </Button>
+              </Tooltip>
+              <Tooltip
+                label="Debe iniciar sesión para importar copys"
+                isDisabled={isAuthenticated}
+                hasArrow
+                placement="top"
+              >
+                <Button 
+                  colorScheme="teal" 
+                  leftIcon={<span>📥</span>}
+                  onClick={() => {
+                    // Verificar si el usuario está autenticado
+                    if (!isAuthenticated) {
+                      toast({
+                        title: "Acción no permitida",
+                        description: "Debe iniciar sesión para importar copys",
+                        status: "warning",
+                        duration: 3000,
+                        isClosable: true,
+                      });
+                      return;
+                    }
+                    
+                    // Abrir la vista de tabla si no está activa
+                    if (viewMode !== "table") {
+                      setViewMode("table");
+                    }
+                    // Simulamos un clic en el botón de importación del CopyTableView
+                    // Esto se manejará cuando se renderice el componente
+                    setTimeout(() => {
+                      const importButton = document.querySelector('[data-testid="bulk-import-button"]');
+                      if (importButton) {
+                        (importButton as HTMLButtonElement).click();
+                      }
+                    }, 100);
+                  }}
+                  isDisabled={!isAuthenticated}
+                  _disabled={{
+                    opacity: 0.6,
+                    cursor: "not-allowed"
+                  }}
+                >
+                Bulk Import
+              </Button>
+              </Tooltip>
             </HStack>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack align="start" spacing={4}>
-              <Text>¿Está seguro que desea eliminar este copy?</Text>
-              {copyToDelete && (
-                <Box p={3} bg="gray.100" borderRadius="md" width="100%">
-                  <Text fontWeight="bold">Slug: {copyToDelete.slug}</Text>
-                  <Text fontSize="sm" mt={1}>ID: {copyToDelete.id}</Text>
-                </Box>
-              )}
-              <Text color="red.500" fontWeight="semibold">Esta acción no se puede deshacer.</Text>
+          </HStack>
+          
+          {/* Modal de creación/edición */}
+          <Modal isOpen={isEditOpen} onClose={cancelEdit} size="xl">
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader>{editingCopy ? "Editar Copy" : "Crear Copy"}</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                <CopyForm
+                  existingCopys={copys.filter(c => editingCopy ? c.id !== editingCopy.id : true)}
+                  onSave={(data) => {
+                    handleSave(data, !!editingCopy);
+                    onEditClose();
+                  }}
+                  onStatusChange={handleStatusChange}
+                  onAddComment={(copyId, comment) => {
+                    // Implementar lógica para agregar comentarios si es necesario
+                    console.log('Agregando comentario:', { copyId, comment });
+                  }}
+                  onTagsChange={(copyId, tags) => {
+                    // Implementar lógica para actualizar etiquetas si es necesario
+                    console.log('Actualizando etiquetas:', { copyId, tags });
+                  }}
+                  onCancel={cancelEdit}
+                  initialValues={editingCopy || {}}
+                  isEditing={!!editingCopy}
+                  // Pasar el setter de currentLanguage al formulario
+                  onLanguageChange={setCurrentLanguage}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="ghost" mr={3} onClick={cancelEdit}>
+                  Cancelar
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+          
+          {/* Sección de búsqueda y filtros */}
+          <Box mb={6}>
+            <VStack spacing={4} align="stretch">
+              {/* Fila 1: Búsqueda y filtros */}
+              <Flex direction={{ base: "column", md: "row" }} gap={4} align="center">
+                <InputGroup maxW={{ base: "100%", md: "400px" }}>
+                  <InputLeftElement pointerEvents="none">
+                    <SearchIcon color="gray.300" />
+                  </InputLeftElement>
+                  <Input
+                    placeholder="Buscar por texto o slug..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </InputGroup>
+                
+                <HStack spacing={4} flexWrap="wrap">
+                  {/* Filtro por estado */}
+                  <Select 
+                    value={statusFilter} 
+                    onChange={(e) => setStatusFilter(e.target.value as CopyStatus | "all")}
+                    width={{ base: "100%", md: "200px" }}
+                    placeholder="Filtrar por estado"
+                  >
+                    <option value="all">Todos los estados</option>
+                    <option value="not_assigned">Sin asignar</option>
+                    <option value="assigned">Asignados</option>
+                    <option value="translated">Traducidos</option>
+                    <option value="reviewed">Revisados</option>
+                    <option value="approved">Aprobados</option>
+                    <option value="rejected">Rechazados</option>
+                  </Select>
+                  
+                  {/* Filtro por etiqueta */}
+                  <Select
+                    value={tagFilter}
+                    onChange={(e) => setTagFilter(e.target.value)}
+                    width={{ base: "100%", md: "200px" }}
+                    placeholder="Filtrar por etiqueta"
+                  >
+                    <option value="all">Todas las etiquetas</option>
+                    {availableTags.map(tag => (
+                      <option key={tag} value={tag}>{tag.charAt(0).toUpperCase() + tag.slice(1)}</option>
+                    ))}
+                  </Select>
+                </HStack>
+              </Flex>
+              
+              {/* Fila 2: Vistas y exportación */}
+              <Flex direction={{ base: "column", md: "row" }} justify="space-between" align="center" gap={4}>
+                {/* Botones de vista */}
+                <HStack spacing={2}>
+                  <Text fontWeight="medium" fontSize="sm">Vista:</Text>
+                  <Button
+                    size="sm"
+                    colorScheme={viewMode === "list" ? "blue" : "gray"}
+                    variant={viewMode === "list" ? "solid" : "outline"}
+                    onClick={() => setViewMode("list")}
+                    leftIcon={<span>📋</span>}
+                  >
+                    Lista
+                  </Button>
+                  <Button
+                    size="sm"
+                    colorScheme={viewMode === "table" ? "blue" : "gray"}
+                    variant={viewMode === "table" ? "solid" : "outline"}
+                    onClick={() => setViewMode("table")}
+                    leftIcon={<span>📊</span>}
+                  >
+                    Tabla
+                  </Button>
+                </HStack>
+                
+                {/* Exportación */}
+                <HStack spacing={3}>
+                  <Text fontWeight="medium" fontSize="sm">Exportar:</Text>
+                  {/* Selector de idiomas para exportación */}
+                  <Select 
+                    value={exportLanguage} 
+                    onChange={(e) => setExportLanguage(e.target.value)}
+                    size="sm"
+                    width="130px"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="es">Español</option>
+                    <option value="en">Inglés</option>
+                    <option value="pt">Portugués</option>
+                    <option value="fr">Francés</option>
+                    <option value="it">Italiano</option>
+                    <option value="de">Alemán</option>
+                  </Select>
+                  
+                  <Button
+                    size="sm"
+                    colorScheme="blue"
+                    onClick={exportToJson}
+                    isDisabled={copys.length === 0 || isExporting}
+                    isLoading={isExporting}
+                    loadingText="Exportando..."
+                  >
+                    Exportar JSON
+                  </Button>
+                  <Button
+                    size="sm"
+                    colorScheme="green"
+                    onClick={exportToGoogleSheets}
+                    isDisabled={copys.length === 0 || isExporting}
+                    isLoading={isExporting}
+                    loadingText="Exportando..."
+                    leftIcon={!isExporting ? <span>📊</span> : undefined}
+                  >
+                    Google Sheets
+                  </Button>
+                </HStack>
+              </Flex>
             </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="outline" mr={3} onClick={onDeleteModalClose}>
-              Cancelar
-            </Button>
-            <Button 
-              colorScheme="red" 
-              onClick={() => {
-                if (copyToDelete) {
-                  // Llamar a la función de eliminación
-                  const updatedCopys = copys.filter((copy) => copy.id !== copyToDelete.id);
-                  setCopys(updatedCopys);
-                  
-                  // Actualizar localStorage
-                  localStorage.setItem('copys', JSON.stringify(updatedCopys));
-                  
-                  // Mostrar notificación
-                  toast({
-                    title: "Copy eliminado",
-                    description: "El copy ha sido eliminado correctamente",
-                    status: "success",
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                  
-                  // Log para debugging
-                  console.log('🗑️ Copy eliminado:', copyToDelete.id);
-                  
-                  // Limpiar el estado
-                  setCopyToDelete(null);
-                }
-                onDeleteModalClose();
-              }}
-            >
-              Confirmar eliminación
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </Container>
+          </Box>
+          
+          {/* Indicador de carga durante la carga inicial */}
+          {isLoading ? (
+            <Box textAlign="center" py={10}>
+              <VStack spacing={4}>
+                <Text fontSize="lg">Cargando datos...</Text>
+                <Box>
+                  <span role="img" aria-label="loading" style={{ fontSize: '2rem' }}>⏳</span>
+                </Box>
+              </VStack>
+            </Box>
+          ) : viewMode === "list" ? (
+            <>
+              <CopyTable 
+                copys={filteredCopys} 
+                onDelete={handleDeleteConfirmation} 
+                onEdit={handleEdit} 
+                onViewHistory={handleViewHistory}
+              />
+              
+              {/* Contador de resultados para vista lista */}
+              <Text mt={2} fontSize="sm" color="gray.600">
+                {filteredCopys.length === copys.length
+                  ? `Mostrando ${copys.length} copys`
+                  : `Mostrando ${filteredCopys.length} de ${copys.length} copys`}
+              </Text>
+            </>
+          ) : (
+            <CopyTableView 
+              copys={filteredCopys}
+              onDelete={handleDeleteConfirmation}
+              onEdit={handleEdit}
+              onViewHistory={handleViewHistory}
+              onSave={(data) => handleSave(data, false)} // Pasamos handleSave para la importación masiva
+              languages={["es", "en", "pt", "fr", "it", "de"]} // Todos los idiomas soportados
+              // Props para manejar el progreso de importación
+              onImportStart={startImport}
+              onImportProgress={updateProgress}
+              onImportComplete={completeImport}
+              onImportError={failImport}
+              onStartImporting={startImporting}
+            />
+          )}
+          
+          {/* Modal de historial */}
+          <HistoryModal
+            copy={selectedHistoryCopy}
+            isOpen={isHistoryOpen}
+            onClose={onHistoryClose}
+          />
+          
+          {/* Modal de confirmación para eliminar copy */}
+          <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose}>
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader color="red.500">
+                <HStack>
+                  <span>⚠️</span>
+                  <Text>Confirmar eliminación</Text>
+                </HStack>
+              </ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                <VStack align="start" spacing={4}>
+                  <Text>¿Está seguro que desea eliminar este copy?</Text>
+                  {copyToDelete && (
+                    <Box p={3} bg="gray.100" borderRadius="md" width="100%">
+                      <Text fontWeight="bold">Slug: {copyToDelete.slug}</Text>
+                      <Text fontSize="sm" mt={1}>ID: {copyToDelete.id}</Text>
+                    </Box>
+                  )}
+                  <Text color="red.500" fontWeight="semibold">Esta acción no se puede deshacer.</Text>
+                </VStack>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="outline" mr={3} onClick={onDeleteModalClose}>
+                  Cancelar
+                </Button>
+                <Button 
+                  colorScheme="red" 
+                  onClick={() => {
+                    if (copyToDelete) {
+                      // Llamar a la función de eliminación
+                      const updatedCopys = copys.filter((copy) => copy.id !== copyToDelete.id);
+                      setCopys(updatedCopys);
+                      
+                      // Actualizar localStorage
+                      localStorage.setItem('copys', JSON.stringify(updatedCopys));
+                      
+                      // Mostrar notificación
+                      toast({
+                        title: "Copy eliminado",
+                        description: "El copy ha sido eliminado correctamente",
+                        status: "success",
+                        duration: 3000,
+                        isClosable: true,
+                      });
+                      
+                      // Log para debugging
+                      console.log('🗑️ Copy eliminado:', copyToDelete.id);
+                      
+                      // Limpiar el estado
+                      setCopyToDelete(null);
+                    }
+                    onDeleteModalClose();
+                  }}
+                >
+                  Confirmar eliminación
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        </Container>
+      </Box>
+    </>
   );
 }
