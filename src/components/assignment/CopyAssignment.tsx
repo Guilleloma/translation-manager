@@ -23,6 +23,7 @@ import {
   TagLabel,
   useColorModeValue,
   Tooltip,
+  VStack,
 } from '@chakra-ui/react';
 import { useUser, type User } from '../../context/UserContext';
 import { Copy } from '../../types/copy';
@@ -70,7 +71,7 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
 
   // Filtrar copys por idioma seleccionado y no asignados
   const pendingCopys = useMemo(() => {
-    if (!selectedLanguage) return [];
+    if (!selectedLanguage || !Array.isArray(copys)) return [];
     
     // Mejoramos el filtrado para que considere correctamente el estado y el idioma
     console.log(`Filtrando copys pendientes para idioma: ${selectedLanguage}`);
@@ -172,46 +173,63 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
           Los traductores solo verán los copys que tengan asignados en los idiomas en los que pueden trabajar.
         </Text>
         
-        <HStack spacing={4} mb={4}>
-          <Select
-            placeholder="Seleccionar idioma"
-            value={selectedLanguage}
-            onChange={(e) => setSelectedLanguage(e.target.value)}
-          >
-            {SUPPORTED_LANGUAGES.map(lang => (
-              <option key={lang.code} value={lang.code}>
-                {lang.name} ({lang.code.toUpperCase()})
-              </option>
-            ))}
-          </Select>
-          
-          <Spacer />
-          
-          <Tooltip 
-            label={eligibleTranslators.length === 0 ? "No hay traductores disponibles para este idioma" : ""}
-          >
-            <Select
-              placeholder="Seleccionar traductor"
-              value={selectedTranslator}
-              onChange={(e) => setSelectedTranslator(e.target.value)}
-              isDisabled={!selectedLanguage || eligibleTranslators.length === 0}
-            >
-              {eligibleTranslators.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.username} ({user.email})
-                </option>
-              ))}
-            </Select>
-          </Tooltip>
-          
-          <Button
-            colorScheme="blue"
-            onClick={handleAssign}
-            isDisabled={!selectedTranslator || selectedCopys.length === 0}
-          >
-            Asignar {selectedCopys.length} copys
-          </Button>
-        </HStack>
+        <VStack spacing={4} align="stretch">
+          <HStack spacing={4} align="end">
+            <Box flex="1">
+              <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.600">
+                Idioma
+              </Text>
+              <Select
+                placeholder="Seleccionar idioma"
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+              >
+                {SUPPORTED_LANGUAGES.map(lang => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name} ({lang.code.toUpperCase()})
+                  </option>
+                ))}
+              </Select>
+            </Box>
+            
+            <Box flex="1">
+              <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.600">
+                Traductor
+              </Text>
+              <Tooltip 
+                label={eligibleTranslators.length === 0 ? "No hay traductores disponibles para este idioma" : ""}
+              >
+                <Select
+                  placeholder="Seleccionar traductor"
+                  value={selectedTranslator}
+                  onChange={(e) => setSelectedTranslator(e.target.value)}
+                  isDisabled={!selectedLanguage || eligibleTranslators.length === 0}
+                >
+                  {eligibleTranslators.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.username} ({user.email})
+                    </option>
+                  ))}
+                </Select>
+              </Tooltip>
+            </Box>
+            
+            <Box>
+              <Text fontSize="sm" fontWeight="medium" mb={2} color="transparent">
+                Acción
+              </Text>
+              <Button
+                colorScheme="blue"
+                onClick={handleAssign}
+                isDisabled={!selectedTranslator || selectedCopys.length === 0}
+                size="md"
+                minW="140px"
+              >
+                Asignar {selectedCopys.length} copy{selectedCopys.length !== 1 ? 's' : ''}
+              </Button>
+            </Box>
+          </HStack>
+        </VStack>
       </Box>
 
       {selectedLanguage && (

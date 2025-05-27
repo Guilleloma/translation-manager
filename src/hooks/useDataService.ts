@@ -12,11 +12,21 @@ export function useCopys() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Cargar datos iniciales
-    setLoading(true);
-    const initialCopys = dataService.getCopys();
-    setCopys(initialCopys);
-    setLoading(false);
+    // Cargar datos iniciales de forma asíncrona
+    const loadInitialCopys = async () => {
+      setLoading(true);
+      try {
+        const initialCopys = await dataService.getCopys();
+        setCopys(initialCopys);
+      } catch (error) {
+        console.error('[useCopys] Error al cargar copys iniciales:', error);
+        setCopys([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialCopys();
 
     // Suscribirse a cambios
     const unsubscribe = dataService.subscribe('copys', (newCopys) => {
@@ -27,11 +37,17 @@ export function useCopys() {
     return unsubscribe;
   }, []);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     setLoading(true);
-    const currentCopys = dataService.getCopys();
-    setCopys(currentCopys);
-    setLoading(false);
+    try {
+      const currentCopys = await dataService.getCopys();
+      setCopys(currentCopys);
+    } catch (error) {
+      console.error('[useCopys] Error al refrescar copys:', error);
+      setCopys([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   return { copys, loading, refresh };
