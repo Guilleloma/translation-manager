@@ -36,7 +36,7 @@ interface CopyTableProps {
 const CopyTableRow = React.memo(({ copy, onEdit, onDelete, isSelected, onToggleSelect }: {
   copy: Copy;
   onEdit: (copy: Copy) => void;
-  onDelete: (copy: Copy) => void;
+  onDelete: (id: string) => void;
   isSelected: boolean;
   onToggleSelect?: (copyId: string) => void;
 }) => {
@@ -45,10 +45,21 @@ const CopyTableRow = React.memo(({ copy, onEdit, onDelete, isSelected, onToggleS
   return (
     <Tr key={copy.id} bg={isSelected ? 'blue.50' : 'white'}>
       <Td>
-        <Checkbox
-          isChecked={isSelected}
-          onChange={() => onToggleSelect?.(copy.id)}
-        />
+        <label
+          onClick={(e) => {
+            // Detener la propagación para evitar que el evento llegue a la fila
+            e.stopPropagation();
+          }}
+          style={{ cursor: 'pointer', display: 'block', width: '100%', height: '100%' }}
+        >
+          <Checkbox
+            isChecked={isSelected}
+            onChange={() => {
+              console.log('Checkbox clicked for copy:', copy.id);
+              onToggleSelect?.(copy.id);
+            }}
+          />
+        </label>
       </Td>
       <Td maxW="200px" isTruncated>
         {/* Mostrar el warning si el slug tiene conflicto */}
@@ -127,6 +138,7 @@ const CopyTable: React.FC<CopyTableProps> = ({
   }, []);
 
   const handleToggleSelect = useCallback((copyId: string) => {
+    console.log('Toggle select called for copyId:', copyId);
     onToggleSelect?.(copyId);
   }, [onToggleSelect]);
 
@@ -134,8 +146,8 @@ const CopyTable: React.FC<CopyTableProps> = ({
     onEdit(copy);
   }, [onEdit]);
 
-  const handleDelete = useCallback((copy: Copy) => {
-    onDelete(copy);
+  const handleDelete = useCallback((id: string) => {
+    onDelete(id);
   }, [onDelete]);
 
   const handleSelectAll = useCallback(() => {
@@ -166,17 +178,26 @@ const CopyTable: React.FC<CopyTableProps> = ({
           <Thead>
             <Tr>
               <Th>
-                <Checkbox
-                  isChecked={selectAllState.isChecked}
-                  isIndeterminate={selectAllState.isIndeterminate}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      if (onSelectAll) handleSelectAll();
-                    } else {
-                      if (onClearSelection) handleClearSelection();
-                    }
+                <label
+                  onClick={(e) => {
+                    // Detener la propagación para evitar que el evento llegue a la fila
+                    e.stopPropagation();
                   }}
-                />
+                  style={{ cursor: 'pointer', display: 'block', width: '100%', height: '100%' }}
+                >
+                  <Checkbox
+                    isChecked={selectAllState.isChecked}
+                    isIndeterminate={selectAllState.isIndeterminate}
+                    onChange={(e) => {
+                      console.log('Select all checkbox changed:', e.target.checked);
+                      if (e.target.checked) {
+                        if (onSelectAll) handleSelectAll();
+                      } else {
+                        if (onClearSelection) handleClearSelection();
+                      }
+                    }}
+                  />
+                </label>
               </Th>
               <Th>Slug</Th>
               <Th>Texto</Th>
@@ -191,7 +212,7 @@ const CopyTable: React.FC<CopyTableProps> = ({
                 key={copy.id}
                 copy={copy}
                 onEdit={handleEdit}
-                onDelete={handleDelete}
+                onDelete={(id) => onDelete(id)}
                 isSelected={selectedCopys.includes(copy.id)}
                 onToggleSelect={handleToggleSelect}
               />

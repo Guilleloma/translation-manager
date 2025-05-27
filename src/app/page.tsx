@@ -79,6 +79,31 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState<CopyStatus | "all">("all");
   const [tagFilter, setTagFilter] = useState<string | "all">("all");
   
+  // Estados para la selección múltiple
+  const [selectedCopys, setSelectedCopys] = useState<string[]>([]);
+  
+  // Funciones para manejar la selección de copys
+  const handleToggleSelect = useCallback((copyId: string) => {
+    console.log('Toggle select called for copyId:', copyId);
+    setSelectedCopys(prev => {
+      if (prev.includes(copyId)) {
+        return prev.filter(id => id !== copyId);
+      } else {
+        return [...prev, copyId];
+      }
+    });
+  }, []);
+  
+  const handleSelectAll = useCallback((copyIds: string[]) => {
+    console.log('Select all with ids:', copyIds);
+    setSelectedCopys(copyIds);
+  }, []);
+  
+  const handleClearSelection = useCallback(() => {
+    console.log('Clear selection');
+    setSelectedCopys([]);
+  }, []);
+  
   // Estados para indicadores de carga
   const [isLoading, setIsLoading] = useState(true); // Carga inicial de datos
   const [isExporting, setIsExporting] = useState(false); // Exportación de datos
@@ -111,6 +136,9 @@ export default function Home() {
   // Estados para el modal de confirmación de eliminación
   const { isOpen: isDeleteModalOpen, onOpen: onDeleteModalOpen, onClose: onDeleteModalClose } = useDisclosure();
   const [copyToDelete, setCopyToDelete] = useState<{id: string, slug: string} | null>(null);
+  
+  // Estado para el modal de confirmación de eliminación masiva
+  const { isOpen: isBulkDeleteModalOpen, onOpen: onBulkDeleteModalOpen, onClose: onBulkDeleteModalClose } = useDisclosure();
 
   // Cargar copys desde el servicio de datos cuando el componente se monta
   useEffect(() => {
@@ -870,7 +898,76 @@ export default function Home() {
                 onDelete={handleDeleteConfirmation} 
                 onEdit={handleEdit} 
                 onViewHistory={handleViewHistory}
+                selectedCopys={selectedCopys}
+                onToggleSelect={handleToggleSelect}
+                onSelectAll={handleSelectAll}
+                onClearSelection={handleClearSelection}
               />
+              
+              {/* Barra de acciones para operaciones en lote si hay elementos seleccionados */}
+              {selectedCopys.length > 0 && (
+                <Box 
+                  position="fixed" 
+                  bottom="0" 
+                  left="0" 
+                  right="0" 
+                  bg="blue.700" 
+                  color="white" 
+                  py={3} 
+                  px={6} 
+                  zIndex={100}
+                  boxShadow="0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06)"
+                >
+                  <Container maxW="container.xl">
+                    <Flex justify="space-between" align="center">
+                      <HStack spacing={4}>
+                        <Badge colorScheme="blue" fontSize="md" p={2} borderRadius="md">
+                          {selectedCopys.length} elementos seleccionados
+                        </Badge>
+                        <Button
+                          onClick={handleClearSelection}
+                          variant="outline"
+                          colorScheme="whiteAlpha"
+                          size="sm"
+                        >
+                          Cancelar selección
+                        </Button>
+                      </HStack>
+                      <Button
+                        leftIcon={<span>🗑️</span>}
+                        colorScheme="red"
+                        variant="solid"
+                        size="md"
+                        onClick={() => {
+                          // Mostrar confirmación
+                          if (confirm(`¿Estás seguro de que deseas eliminar ${selectedCopys.length} elementos?`)) {
+                            // Eliminar elementos seleccionados
+                            selectedCopys.forEach(id => {
+                              dataService.deleteCopy(id);
+                            });
+                            
+                            // Mostrar notificación
+                            toast({
+                              title: "Elementos eliminados",
+                              description: `Se han eliminado ${selectedCopys.length} elementos`,
+                              status: "success",
+                              duration: 3000,
+                              isClosable: true,
+                            });
+                            
+                            // Limpiar selección
+                            handleClearSelection();
+                          }
+                        }}
+                      >
+                        Eliminar {selectedCopys.length} elementos
+                      </Button>
+                    </Flex>
+                  </Container>
+                </Box>
+              )}
+              
+
               
               {/* Contador de resultados para vista lista */}
               <Text mt={2} fontSize="sm" color="gray.600">
@@ -960,6 +1057,8 @@ export default function Home() {
               </ModalFooter>
             </ModalContent>
           </Modal>
+
+
         </Container>
       </Box>
     </>
