@@ -224,6 +224,10 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
                     isChecked={selectAll} 
                     onChange={handleSelectAll}
                     isDisabled={pendingCopys.length === 0}
+                    onClick={(e) => {
+                      // Detener la propagación para evitar que el evento llegue a la fila
+                      e.stopPropagation();
+                    }}
                   />
                 </Th>
                 <Th>Slug</Th>
@@ -246,7 +250,14 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
                     <Td>
                       <Checkbox 
                         isChecked={selectedCopys.includes(copy.id)} 
-                        onChange={() => handleSelectCopy(copy.id)}
+                        onChange={() => {
+                          console.log('Checkbox clicked for copy:', copy.id);
+                          handleSelectCopy(copy.id);
+                        }}
+                        onClick={(e) => {
+                          // Detener la propagación para evitar que el evento llegue a la fila
+                          e.stopPropagation();
+                        }}
                       />
                     </Td>
                     <Td fontFamily="mono" fontSize="sm">{copy.slug}</Td>
