@@ -1,5 +1,13 @@
-module.exports = {
-  testEnvironment: 'jsdom',
+const nextJest = require('next/jest')
+
+const createJestConfig = nextJest({
+  // Provide the path to your Next.js app to load next.config.js and .env files
+  dir: './',
+})
+
+// Add any custom config to be passed to Jest
+const customJestConfig = {
+  testEnvironment: 'node', 
   roots: ['<rootDir>/src'],
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx'],
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
@@ -24,3 +32,5 @@ module.exports = {
     '/node_modules/(?!(@chakra-ui|framer-motion)/)'
   ]
 };
+
+module.exports = createJestConfig(customJestConfig)
