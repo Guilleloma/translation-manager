@@ -8,6 +8,11 @@ import LoadingIndicator from "../components/layout/LoadingIndicator";
 import ResetDataButton from "../components/admin/ResetDataButton";
 import { Box } from "@chakra-ui/react";
 
+// Importar utilidad de debug solo en desarrollo
+if (process.env.NODE_ENV === 'development') {
+  import('../utils/debugStorage');
+}
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

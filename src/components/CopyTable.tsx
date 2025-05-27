@@ -1,118 +1,218 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Table,
   Thead,
   Tbody,
   Tr,
-  Th, 
+  Th,
   Td,
   IconButton,
   HStack,
   Tooltip,
   Box,
-  Flex
+  Flex,
+  Text,
+  Checkbox,
+  TableContainer
 } from '@chakra-ui/react';
+import { EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { Copy } from '../types/copy';
 import StatusBadge from './status/StatusBadge';
 import LanguageBadge from './common/LanguageBadge';
+import Pagination from './common/Pagination';
 
 interface CopyTableProps {
   copys: Copy[];
   onDelete: (id: string) => void;
   onEdit: (copy: Copy) => void;
   onViewHistory?: (copy: Copy) => void;
+  selectedCopys?: string[];
+  onToggleSelect?: (copyId: string) => void;
+  onSelectAll?: (copyIds: string[]) => void;
+  onClearSelection?: () => void;
 }
 
-export const CopyTable: React.FC<CopyTableProps> = ({ copys, onDelete, onEdit, onViewHistory }) => {
-  // Detectar posibles conflictos de slug (slug raíz vs slug con prefijo)
-  // Ejemplo: 'button' vs 'button.crear' causarían conflicto en la estructura JSON
-  const slugConflicts = useMemo(() => {
-    // Extraer todos los slugs únicos
-    const slugs = Array.from(new Set(copys.map(c => c.slug)));
-    const conflictMap: Record<string, boolean> = {};
-    
-    // Detectar conflictos: un slug es prefijo de otro
-    slugs.forEach(slug => {
-      slugs.forEach(otherSlug => {
-        if (slug !== otherSlug && 
-           (otherSlug.startsWith(slug + '.') || slug.startsWith(otherSlug + '.'))) {
-          // Log para debugging
-          console.log(`⚠️ Conflicto de slug detectado en vista lista: "${slug}" con "${otherSlug}"`); 
-          conflictMap[slug] = true;
-          conflictMap[otherSlug] = true;
-        }
-      });
-    });
-    
-    return conflictMap;
-  }, [copys]);
+// Componente memoizado para las filas de la tabla
+const CopyTableRow = React.memo(({ copy, onEdit, onDelete, isSelected, onToggleSelect }: {
+  copy: Copy;
+  onEdit: (copy: Copy) => void;
+  onDelete: (copy: Copy) => void;
+  isSelected: boolean;
+  onToggleSelect?: (copyId: string) => void;
+}) => {
+  console.log(`Rendering table row for copy: ${copy.id}`);
   
   return (
-  <Table variant="simple" mt={4}>
-    <Thead>
-      <Tr>
-        <Th>Slug</Th>
-        <Th>Texto</Th>
-        <Th>Idioma</Th>
-        <Th>Estado</Th>
-        <Th width="100px">Acciones</Th>
-      </Tr>
-    </Thead>
-    <Tbody>
-      {copys.length === 0 ? (
-        <Tr>
-          <Td colSpan={5} textAlign="center" py={4}>
-            No hay copys para mostrar
-          </Td>
-        </Tr>
-      ) : (
-        copys.map(copy => (
-          <Tr key={copy.id}>
-            <Td maxW="200px" isTruncated>
-              {/* Mostrar el warning si el slug tiene conflicto */}
-              {slugConflicts[copy.slug] ? (
-                <Flex align="center">
-                  <Box mr={1}>{copy.slug}</Box>
-                  <Tooltip label="Este slug puede causar conflictos al exportar a JSON i18n porque existe como clave raíz y como prefijo de otros slugs. Revisa la exportación para evitar sobrescribir valores.">
-                    <span style={{ color: '#E9B824', cursor: 'pointer' }}>
-                      ⚠️
-                    </span>
-                  </Tooltip>
-                </Flex>
-              ) : copy.slug}
-            </Td>
-            <Td maxW="300px" isTruncated>{copy.text}</Td>
-            <Td><LanguageBadge languageCode={copy.language} showFullName={true} /></Td>
-            <Td><StatusBadge status={copy.status as any} /></Td>
-            <Td>
-              <HStack spacing={2}>
-                <Tooltip label="Editar">
-                  <IconButton
-                    aria-label="Editar copy"
-                    icon={<span>✏️</span>}
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onEdit(copy)}
-                  />
-                </Tooltip>
-                <Tooltip label="Eliminar">
-                  <IconButton
-                    aria-label="Eliminar copy"
-                    icon={<span>🗑️</span>}
-                    size="sm"
-                    variant="ghost"
-                    colorScheme="red"
-                    onClick={() => onDelete(copy.id)}
-                  />
-                </Tooltip>
-              </HStack>
-            </Td>
-          </Tr>
-        ))
-      )}
-    </Tbody>
-  </Table>
+    <Tr key={copy.id} bg={isSelected ? 'blue.50' : 'white'}>
+      <Td>
+        <Checkbox
+          isChecked={isSelected}
+          onChange={() => onToggleSelect?.(copy.id)}
+        />
+      </Td>
+      <Td maxW="200px" isTruncated>
+        {/* Mostrar el warning si el slug tiene conflicto */}
+        {copy.slug}
+      </Td>
+      <Td maxW="300px" isTruncated>{copy.text}</Td>
+      <Td><LanguageBadge languageCode={copy.language} showFullName={true} /></Td>
+      <Td><StatusBadge status={copy.status as any} /></Td>
+      <Td>
+        <HStack spacing={2}>
+          <Tooltip label="Editar">
+            <IconButton
+              aria-label="Editar copy"
+              icon={<EditIcon />}
+              size="sm"
+              variant="ghost"
+              onClick={() => onEdit(copy)}
+            />
+          </Tooltip>
+          <Tooltip label="Eliminar">
+            <IconButton
+              aria-label="Eliminar copy"
+              icon={<DeleteIcon />}
+              size="sm"
+              variant="ghost"
+              colorScheme="red"
+              onClick={() => onDelete(copy.id)}
+            />
+          </Tooltip>
+        </HStack>
+      </Td>
+    </Tr>
+  );
+});
+
+CopyTableRow.displayName = 'CopyTableRow';
+
+const CopyTable: React.FC<CopyTableProps> = ({
+  copys = [], // Valor por defecto para evitar errores
+  onViewHistory,
+  onEdit,
+  onDelete,
+  selectedCopys = [],
+  onToggleSelect,
+  onSelectAll,
+  onClearSelection
+}) => {
+  console.time('CopyTable render');
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25);
+
+  // Aplicar paginación con memoización
+  const paginatedCopys = useMemo(() => {
+    console.time('Paginating copys in CopyTable');
+    if (!copys || copys.length === 0) {
+      console.timeEnd('Paginating copys in CopyTable');
+      return [];
+    }
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginated = copys.slice(startIndex, endIndex);
+    console.timeEnd('Paginating copys in CopyTable');
+    return paginated;
+  }, [copys, currentPage, itemsPerPage]);
+
+  // Usar useCallback para funciones que se pasan como props
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handleItemsPerPageChange = useCallback((items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1); // Reset a la primera página
+  }, []);
+
+  const handleToggleSelect = useCallback((copyId: string) => {
+    onToggleSelect?.(copyId);
+  }, [onToggleSelect]);
+
+  const handleEdit = useCallback((copy: Copy) => {
+    onEdit(copy);
+  }, [onEdit]);
+
+  const handleDelete = useCallback((copy: Copy) => {
+    onDelete(copy);
+  }, [onDelete]);
+
+  const handleSelectAll = useCallback(() => {
+    onSelectAll?.(paginatedCopys.map(copy => copy.id));
+  }, [onSelectAll, paginatedCopys]);
+
+  const handleClearSelection = useCallback(() => {
+    onClearSelection?.();
+  }, [onClearSelection]);
+
+  // Memoizar el estado del checkbox principal
+  const selectAllState = useMemo(() => {
+    const selectedCount = selectedCopys.length;
+    const totalCount = paginatedCopys.length;
+    
+    return {
+      isChecked: selectedCount === totalCount && totalCount > 0,
+      isIndeterminate: selectedCount > 0 && selectedCount < totalCount
+    };
+  }, [selectedCopys.length, paginatedCopys.length]);
+
+  console.timeEnd('CopyTable render');
+
+  return (
+    <Box>
+      <TableContainer>
+        <Table variant="simple">
+          <Thead>
+            <Tr>
+              <Th>
+                <Checkbox
+                  isChecked={selectAllState.isChecked}
+                  isIndeterminate={selectAllState.isIndeterminate}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      if (onSelectAll) handleSelectAll();
+                    } else {
+                      if (onClearSelection) handleClearSelection();
+                    }
+                  }}
+                />
+              </Th>
+              <Th>Slug</Th>
+              <Th>Texto</Th>
+              <Th>Idioma</Th>
+              <Th>Estado</Th>
+              <Th>Acciones</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {paginatedCopys.map((copy) => (
+              <CopyTableRow
+                key={copy.id}
+                copy={copy}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                isSelected={selectedCopys.includes(copy.id)}
+                onToggleSelect={handleToggleSelect}
+              />
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+
+      {/* Componente de paginación */}
+      <Pagination
+        currentPage={currentPage}
+        totalItems={copys?.length || 0}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+        onItemsPerPageChange={handleItemsPerPageChange}
+      />
+      <Text mt={2} fontSize="sm" color="gray.600">
+        {`${copys?.length || 0} traducciones totales`}
+      </Text>
+    </Box>
   );
 };
 
-// Ya no necesitamos esta función porque StatusBadge maneja los colores internamente
+export default CopyTable;

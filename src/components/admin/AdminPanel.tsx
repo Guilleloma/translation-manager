@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Heading,
@@ -33,6 +33,8 @@ import {
   Link,
   Flex,
   Tooltip,
+  IconButton,
+  Spinner,
 } from '@chakra-ui/react';
 import { ArrowForwardIcon, SettingsIcon, AtSignIcon, EditIcon, RepeatIcon } from '@chakra-ui/icons';
 import NextLink from 'next/link';
@@ -44,6 +46,9 @@ import { Copy } from '../../types/copy';
 import { resetToSeedData } from '../../utils/seedData';
 import RoleSelector from './RoleSelector';
 import LanguageBadge from '../common/LanguageBadge';
+import { useCopys } from '../../hooks/useDataService';
+import dataService from '../../services/dataService';
+import { MongoDBMigration } from './MongoDBMigration';
 
 /**
  * AdminPanel Component
@@ -55,45 +60,22 @@ export default function AdminPanel() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = React.useRef<HTMLButtonElement>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [copys, setCopys] = useState<Copy[]>([]);
   
-  // Cargar copys desde localStorage (en una app real, esto sería una API)
+  // Usar el nuevo hook para copys
+  const { copys, loading: isLoadingCopys, refresh: refreshCopys } = useCopys();
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  
+  // Actualizar timestamp cuando cambian los copys
   useEffect(() => {
-    console.log('🔄 Cargando copys desde localStorage para panel de administración...');
-    
-    const storedCopys = localStorage.getItem('copys');
-    if (storedCopys) {
-      try {
-        const parsedCopys = JSON.parse(storedCopys);
-        setCopys(parsedCopys);
-        console.log(`✅ Copys cargados correctamente: ${parsedCopys.length}`);
-      } catch (error) {
-        console.error('❌ Error al cargar copys:', error);
-        setCopys([]);
-      }
-    } else {
-      console.log('⚠️ No se encontraron copys en localStorage');
-    }
-  }, []);
+    setLastUpdate(new Date());
+  }, [copys]);
   
   // Función para actualizar un copy
   const updateCopy = (copyId: string, updates: Partial<Copy>) => {
-    console.log(`📝 Actualizando copy ${copyId}:`, updates);
+    console.log(` Actualizando copy ${copyId}:`, updates);
     
-    setCopys(prevCopys => {
-      const updatedCopys = prevCopys.map(copy => {
-        if (copy.id === copyId) {
-          return { ...copy, ...updates };
-        }
-        return copy;
-      });
-      
-      // En una app real, esto sería una llamada a API
-      // Por ahora, guardamos en localStorage
-      localStorage.setItem('copys', JSON.stringify(updatedCopys));
-      
-      return updatedCopys;
-    });
+    // Usar el servicio de datos
+    dataService.updateCopy(copyId, updates);
     
     // Mensaje de éxito
     toast({
@@ -104,7 +86,7 @@ export default function AdminPanel() {
       isClosable: true,
     });
   };
-  
+
   // Sample users data - these would be loaded from an API in a real app
   const sampleUsers: User[] = [
     {
@@ -128,7 +110,7 @@ export default function AdminPanel() {
       languages: ['en', 'it'],
     },
   ];
-  
+
   // Initialize with sample users if no users exist
   useEffect(() => {
     if (users.length === 0) {
@@ -141,16 +123,16 @@ export default function AdminPanel() {
   // Function to change user role
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     if (!currentUser) return;
-    
+
     // Buscar el usuario por ID
     const user = users.find(u => u.id === userId);
     if (!user) {
       console.error(`Usuario con ID ${userId} no encontrado`);
       return;
     }
-    
+
     console.log(`Cambiando rol de usuario: ${user.username} de ${user.role} a ${newRole}`);
-    
+
     // Actualizar el rol del usuario
     updateUser(userId, { ...user, role: newRole });
   };
@@ -158,18 +140,18 @@ export default function AdminPanel() {
   // Function to delete user
   const handleDeleteUser = () => {
     if (!selectedUser || !currentUser) return;
-    
+
     console.log(`Deleting user: ${selectedUser.username}`);
-    
+
     // In a real app, this would be an API call
     // For this prototype, we just filter out the user from our local state
     const updatedUsers = users.filter(u => u.id !== selectedUser.id);
-    
+
     // Update local storage (in a real app, this would be handled by the API)
     localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
+
     console.log(`User deleted: ${selectedUser.username}`);
-    
+
     // For this prototype, we'll just show a success message
     toast({
       title: 'Usuario eliminado',
@@ -178,7 +160,7 @@ export default function AdminPanel() {
       duration: 3000,
       isClosable: true,
     });
-    
+
     onClose();
   };
 
@@ -190,54 +172,88 @@ export default function AdminPanel() {
   };
 
   return (
-    <Box p={5}>
-      <Heading as="h1" size="xl" mb={5}>
-        Panel de Administración
-      </Heading>
-      
+    <Box p={6}>
+      <Flex mb={6} align="center" justify="space-between">
+        <Heading size="lg">Panel de Administración</Heading>
+        <Flex gap={2} align="center">
+          <Text fontSize="sm" color="gray.500">
+            Última actualización: {lastUpdate.toLocaleTimeString()}
+          </Text>
+          <Tooltip label="Refrescar datos">
+            <IconButton
+              aria-label="Refrescar datos"
+              icon={isLoadingCopys ? <Spinner size="sm" /> : <RepeatIcon />}
+              onClick={() => {
+                refreshCopys();
+                dataService.debug(); // Mostrar debug en consola
+              }}
+              size="sm"
+              colorScheme="blue"
+              variant="ghost"
+              isDisabled={isLoadingCopys}
+            />
+          </Tooltip>
+        </Flex>
+      </Flex>
+
       <Tabs variant="enclosed" colorScheme="blue">
         <TabList>
           <Tab>Dashboard</Tab>
           <Tab>Asignación de Copys</Tab>
           <Tab>Usuarios</Tab>
           <Tab>Asignación de Idiomas</Tab>
+          <Tab>MongoDB</Tab>
         </TabList>
-        
+
         <TabPanels>
           {/* Dashboard Tab */}
           <TabPanel>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
               <Card>
                 <CardBody>
-                  <Flex align="center" mb={3}>
-                    <Icon as={AtSignIcon} boxSize={6} color="blue.500" mr={2} />
+                  <Flex align="center" mb={2}>
+                    <Icon as={AtSignIcon} mr={2} color="blue.500" />
                     <Heading size="md">Usuarios</Heading>
                   </Flex>
                   <Text fontSize="2xl" fontWeight="bold">{users.length}</Text>
-                  <Text color="gray.500">Total de usuarios registrados</Text>
+                  <Text color="gray.500">Usuarios registrados</Text>
                 </CardBody>
               </Card>
-              
+
               <Card>
                 <CardBody>
-                  <Flex align="center" mb={3}>
-                    <Icon as={EditIcon} boxSize={6} color="green.500" mr={2} />
+                  <Flex align="center" mb={2}>
+                    <Icon as={EditIcon} mr={2} color="green.500" />
+                    <Heading size="md">Traductores</Heading>
+                  </Flex>
+                  <Text fontSize="2xl" fontWeight="bold">
+                    {users.filter(u => u.role === UserRole.TRANSLATOR).length}
+                  </Text>
+                  <Text color="gray.500">Traductores activos</Text>
+                </CardBody>
+              </Card>
+
+              <Card>
+                <CardBody>
+                  <Flex align="center" mb={2}>
+                    <Icon as={SettingsIcon} mr={2} color="purple.500" />
                     <Heading size="md">Copys</Heading>
                   </Flex>
-                  <Text fontSize="2xl" fontWeight="bold">{copys.length}</Text>
+                  <Flex align="baseline" gap={2}>
+                    <Text fontSize="2xl" fontWeight="bold">{copys.length}</Text>
+                    {isLoadingCopys && <Spinner size="sm" color="purple.500" />}
+                  </Flex>
                   <Text color="gray.500">Total de copys en el sistema</Text>
                 </CardBody>
               </Card>
-              
-
             </SimpleGrid>
-            
+
             <Box mt={8}>
               <Heading size="md" mb={4}>Actividad Reciente</Heading>
-              <Box 
-                p={4} 
-                borderWidth="1px" 
-                borderRadius="md" 
+              <Box
+                p={4}
+                borderWidth="1px"
+                borderRadius="md"
                 bg="gray.50"
               >
                 <Text color="gray.500" fontStyle="italic">
@@ -246,15 +262,15 @@ export default function AdminPanel() {
               </Box>
             </Box>
           </TabPanel>
-          
+
           {/* Copy Assignment Tab */}
           <TabPanel>
-            <CopyAssignment 
-              copys={copys} 
-              updateCopy={updateCopy} 
+            <CopyAssignment
+              copys={copys}
+              updateCopy={updateCopy}
             />
           </TabPanel>
-          
+
           {/* Users Tab */}
           <TabPanel>
             <Box overflowX="auto">
@@ -276,9 +292,9 @@ export default function AdminPanel() {
                       <Td>{user.username}</Td>
                       <Td>{user.email}</Td>
                       <Td>
-                        <RoleSelector 
-                          user={user} 
-                          onRoleChange={handleRoleChange} 
+                        <RoleSelector
+                          user={user}
+                          onRoleChange={handleRoleChange}
                         />
                       </Td>
                       <Td>
@@ -308,14 +324,19 @@ export default function AdminPanel() {
               </Table>
             </Box>
           </TabPanel>
-          
+
           {/* Language Assignment Tab */}
           <TabPanel>
             <LanguageUserSelector />
           </TabPanel>
+
+          {/* MongoDB Tab */}
+          <TabPanel>
+            <MongoDBMigration />
+          </TabPanel>
         </TabPanels>
       </Tabs>
-      
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         isOpen={isOpen}

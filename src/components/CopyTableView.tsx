@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Table,
   Thead,
@@ -31,9 +31,11 @@ import {
   useDisclosure,
   useToast
 } from '@chakra-ui/react';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Copy } from '../types/copy';
 import { BulkImportForm } from './BulkImportForm';
 import { useUser } from '../context/UserContext';
+import Pagination from './common/Pagination';
 
 interface CopyTableViewProps {
   copys: Copy[];
@@ -42,6 +44,11 @@ interface CopyTableViewProps {
   onSave?: (copy: Omit<Copy, 'id' | 'status'>) => void;
   languages?: string[];
   onViewHistory?: (copy: Copy) => void;
+  onImportStart?: (total: number, message?: string) => void;
+  onImportProgress?: (current: number, phase?: 'validating' | 'importing' | 'completed' | 'error', message?: string, details?: any) => void;
+  onImportComplete?: (message?: string, details?: any) => void;
+  onImportError?: (message?: string) => void;
+  onStartImporting?: (message?: string) => void;
 }
 
 type GroupedCopy = {
@@ -52,12 +59,172 @@ type GroupedCopy = {
   key?: string; // Clave única para forzar re-render
 };
 
+const CopyRow = React.memo(({ group, onEdit, onDelete, onViewHistory, languages, showLanguages, groupedCopys }: {
+  group: GroupedCopy;
+  onEdit: (copy: Copy) => void;
+  onDelete: (id: string) => void;
+  onViewHistory?: (copy: Copy) => void;
+  languages: string[];
+  showLanguages: string[];
+  groupedCopys: GroupedCopy[];
+}) => {
+  return (
+    <Tr key={group.slug}>
+      <Td fontWeight="medium">
+        {/* Detectar colisión de slug raíz y prefijo */}
+        {(() => {
+          // Buscar si existe algún otro slug que empiece por este slug + '.' (ej: 'button' y 'button.crear')
+          const hasPrefix = groupedCopys.some(other =>
+            other.slug !== group.slug &&
+            (other.slug.startsWith(group.slug + '.') || group.slug.startsWith(other.slug + '.'))
+          );
+          if (hasPrefix) {
+            console.log(`⚠️ Slug ${group.slug} puede causar conflictos al exportar a JSON i18n porque existe como clave raíz y como prefijo de otros slugs.`);
+            return (
+              <HStack spacing={1} align="center">
+                <span>{group.slug}</span>
+                <Tooltip label="Este slug puede causar conflictos al exportar a JSON i18n porque existe como clave raíz y como prefijo de otros slugs. Revisa la exportación para evitar sobrescribir valores.">
+                  <span style={{ color: '#E9B824', cursor: 'pointer' }}>
+                    ⚠️
+                  </span>
+                </Tooltip>
+              </HStack>
+            );
+          }
+          return group.slug;
+        })()}
+      </Td>
+      
+      {languages
+        .filter(lang => showLanguages.includes(lang))
+        .map(lang => {
+          const copy = group.translations[lang];
+          return (
+            <Td key={lang}>
+              {copy ? (
+                <Box>
+                  <Text>{copy.text}</Text>
+                  <Badge 
+                    size="sm" 
+                    colorScheme={getStatusColor(copy.status)}
+                    mt={1}
+                  >
+                    {copy.status}
+                  </Badge>
+                </Box>
+              ) : (
+                <Text color="gray.400" fontSize="sm" fontStyle="italic">
+                  No traducido
+                </Text>
+              )}
+            </Td>
+          );
+        })}
+      
+      <Td>
+        <HStack spacing={1}>
+          <Menu>
+            <MenuButton
+              as={IconButton}
+              aria-label="Acciones"
+              icon={<span>⚙️</span>}
+              variant="ghost"
+              size="sm"
+            />
+            <MenuList>
+              {languages.map(lang => {
+                const copy = group.translations[lang];
+                return copy ? (
+                  <MenuItem 
+                    key={lang}
+                    onClick={() => onEdit(copy)}
+                    icon={<span>✏️</span>}
+                  >
+                    Editar ({lang})
+                  </MenuItem>
+                ) : (
+                  <MenuItem 
+                    key={lang}
+                    icon={<span>➕</span>}
+                    // Crear nuevo copy con este slug e idioma
+                    onClick={() => {
+                      console.log(`🔴 Iniciando creación de nuevo copy para slug "${group.slug}" en idioma "${lang}"`);
+                      // Añadimos una marca temporal para evitar que se pierda entre otros copys
+                      onEdit({
+                        id: '', // vacío para que se cree uno nuevo
+                        slug: group.slug,
+                        text: '',
+                        language: lang,
+                        status: 'not_assigned'
+                      });
+                    }}
+                  >
+                    Crear en {lang}
+                  </MenuItem>
+                );
+              })}
+              {/* Opción para ver el historial si hay alguna traducción con historial */}
+              {onViewHistory && Object.values(group.translations).some(copy => 
+                copy && copy.history && copy.history.length > 0
+              ) && (
+                <MenuItem 
+                  icon={<span>📋</span>}
+                  onClick={() => {
+                    // Buscar la primera traducción con historial
+                    const copyWithHistory = Object.values(group.translations).find(
+                      copy => copy && copy.history && copy.history.length > 0
+                    );
+                    if (copyWithHistory) {
+                      onViewHistory(copyWithHistory);
+                    }
+                  }}
+                >
+                  Ver historial de cambios
+                </MenuItem>
+              )}
+              
+              <MenuItem 
+                icon={<span>🗑️</span>}
+                color="red.500"
+                onClick={() => {
+                  // Guardar el slug y abrir el modal de confirmación
+                  setSlugToDelete(group.slug);
+                  onDeleteModalOpen();
+                }}
+              >
+                Eliminar todas las traducciones
+              </MenuItem>
+            </MenuList>
+          </Menu>
+        </HStack>
+      </Td>
+    </Tr>
+  );
+});
+
+CopyRow.displayName = 'CopyRow';
+
+const ImportProgressIndicator = React.memo(({ progress }: { progress: { current: number; total: number } }) => (
+  <Box mb={4} p={4} bg="blue.50" borderRadius="md">
+    <Text fontWeight="bold">Importando traducciones...</Text>
+    <Text>Progreso: {progress.current} / {progress.total}</Text>
+    <Progress value={(progress.current / progress.total) * 100} mt={2} />
+  </Box>
+));
+
+ImportProgressIndicator.displayName = 'ImportProgressIndicator';
+
 export const CopyTableView: React.FC<CopyTableViewProps> = ({ 
   copys, 
   onEdit, 
   onDelete,
   onSave,
   onViewHistory,
+  onImportStart,
+  onImportProgress,
+  onImportComplete,
+  onImportError,
+  onStartImporting,
   languages = ['es', 'en', 'fr', 'it', 'de', 'pt', 'pt-br'] // Incluir todos los idiomas soportados por defecto
 }) => {
   const { isAuthenticated } = useUser(); // Obtener el estado de autenticación
@@ -67,6 +234,10 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
   const [showLanguages, setShowLanguages] = useState<string[]>(languages);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25);
   
   // Este efecto es muy importante para debugging - no borrar
   useEffect(() => {
@@ -196,13 +367,25 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
     return resultArray;
   }, [copys, languages]); // Dependencias exactas - solo recalcular cuando estos props cambien
   
-  const toggleLanguage = (language: string) => {
+  // Resetear a la primera página cuando cambian los datos o filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [copys]);
+  
+  // Aplicar paginación a los elementos agrupados
+  const paginatedGroupedCopys = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return groupedCopys.slice(startIndex, endIndex);
+  }, [groupedCopys, currentPage, itemsPerPage]);
+  
+  const toggleLanguage = useCallback((language: string) => {
     setShowLanguages(prev => 
       prev.includes(language) 
         ? prev.filter(lang => lang !== language)
         : [...prev, language]
     );
-  };
+  }, [setShowLanguages]);
   
   // Para ordenar los idiomas, 'es' y 'en' primero, luego el resto alfabéticamente
   const sortedLanguages = useMemo(() => {
@@ -229,6 +412,42 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
     });
   }, [languages, copys]);
   
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handleItemsPerPageChange = useCallback((items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1); // Reset a la primera página
+  }, []);
+
+  const handleSearchChange = useCallback((value: string) => {
+    // setSearchTerm(value);
+    // setCurrentPage(1); // Reset a la primera página cuando se busca
+  }, []);
+
+  const handleLanguageFilterChange = useCallback((value: string) => {
+    // setLanguageFilter(value);
+    // setCurrentPage(1); // Reset a la primera página cuando se filtra
+  }, []);
+
+  const handleStatusFilterChange = useCallback((value: string) => {
+    // setStatusFilter(value);
+    // setCurrentPage(1); // Reset a la primera página cuando se filtra
+  }, []);
+
+  const handleToggleSelect = useCallback((copyId: string) => {
+    // onToggleSelect(copyId);
+  }, []);
+
+  const handleEdit = useCallback((copy: Copy) => {
+    onEdit(copy);
+  }, [onEdit]);
+
+  const handleDelete = useCallback((copy: Copy) => {
+    onDelete(copy);
+  }, [onDelete]);
+
   return (
     <>
     <Box overflowX="auto">
@@ -289,163 +508,34 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
               </Td>
             </Tr>
           ) : (
-            groupedCopys.map(group => (
-              <Tr key={group.slug}>
-                <Td fontWeight="medium">
-                  {/* Detectar colisión de slug raíz y prefijo */}
-                  {(() => {
-                    // Buscar si existe algún otro slug que empiece por este slug + '.' (ej: 'button' y 'button.crear')
-                    const hasPrefix = groupedCopys.some(other =>
-                      other.slug !== group.slug &&
-                      (other.slug.startsWith(group.slug + '.') || group.slug.startsWith(other.slug + '.'))
-                    );
-                    if (hasPrefix) {
-                      console.log(`⚠️ Slug ${group.slug} puede causar conflictos al exportar a JSON i18n porque existe como clave raíz y como prefijo de otros slugs.`);
-                      return (
-                        <HStack spacing={1} align="center">
-                          <span>{group.slug}</span>
-                          <Tooltip label="Este slug puede causar conflictos al exportar a JSON i18n porque existe como clave raíz y como prefijo de otros slugs. Revisa la exportación para evitar sobrescribir valores.">
-                            <span style={{ color: '#E9B824', cursor: 'pointer' }}>
-                              ⚠️
-                            </span>
-                          </Tooltip>
-                        </HStack>
-                      );
-                    }
-                    return group.slug;
-                  })()}
-                </Td>
-                
-                {sortedLanguages
-                  .filter(lang => showLanguages.includes(lang))
-                  .map(lang => {
-                    const copy = group.translations[lang];
-                    return (
-                      <Td key={lang}>
-                        {copy ? (
-                          <Box>
-                            <Text>{copy.text}</Text>
-                            <Badge 
-                              size="sm" 
-                              colorScheme={getStatusColor(copy.status)}
-                              mt={1}
-                            >
-                              {copy.status}
-                            </Badge>
-                          </Box>
-                        ) : (
-                          <Text color="gray.400" fontSize="sm" fontStyle="italic">
-                            No traducido
-                          </Text>
-                        )}
-                      </Td>
-                    );
-                  })}
-                
-                <Td>
-                  <HStack spacing={1}>
-                    <Menu>
-                      <MenuButton
-                        as={IconButton}
-                        aria-label="Acciones"
-                        icon={<span>⚙️</span>}
-                        variant="ghost"
-                        size="sm"
-                      />
-                      <MenuList>
-                        {sortedLanguages.map(lang => {
-                          const copy = group.translations[lang];
-                          return copy ? (
-                            <MenuItem 
-                              key={lang}
-                              onClick={() => isAuthenticated ? onEdit(copy) : null}
-                              icon={<span>✏️</span>}
-                              isDisabled={!isAuthenticated}
-                            >
-                              Editar ({lang})
-                              {!isAuthenticated && (
-                                <Tooltip label="Debe iniciar sesión para editar" placement="right">
-                                  <span style={{ marginLeft: '5px' }}>ℹ️</span>
-                                </Tooltip>
-                              )}
-                            </MenuItem>
-                          ) : (
-                            <MenuItem 
-                              key={lang}
-                              icon={<span>➕</span>}
-                              // Crear nuevo copy con este slug e idioma
-                              isDisabled={!isAuthenticated}
-                              onClick={() => {
-                                if (isAuthenticated) {
-                                  console.log(`🔴 Iniciando creación de nuevo copy para slug "${group.slug}" en idioma "${lang}"`);
-                                  // Añadimos una marca temporal para evitar que se pierda entre otros copys
-                                  onEdit({
-                                    id: '', // vacío para que se cree uno nuevo
-                                    slug: group.slug,
-                                    text: '',
-                                    language: lang,
-                                    status: 'not_assigned'
-                                  });
-                                }
-                              }}
-                            >
-                              Crear en {lang}
-                              {!isAuthenticated && (
-                                <Tooltip label="Debe iniciar sesión para crear traducciones" placement="right">
-                                  <span style={{ marginLeft: '5px' }}>ℹ️</span>
-                                </Tooltip>
-                              )}
-                            </MenuItem>
-                          );
-                        })}
-                        {/* Opción para ver el historial si hay alguna traducción con historial */}
-                        {onViewHistory && Object.values(group.translations).some(copy => 
-                          copy && copy.history && copy.history.length > 0
-                        ) && (
-                          <MenuItem 
-                            icon={<span>📋</span>}
-                            onClick={() => {
-                              // Buscar la primera traducción con historial
-                              const copyWithHistory = Object.values(group.translations).find(
-                                copy => copy && copy.history && copy.history.length > 0
-                              );
-                              if (copyWithHistory) {
-                                onViewHistory(copyWithHistory);
-                              }
-                            }}
-                          >
-                            Ver historial de cambios
-                          </MenuItem>
-                        )}
-                        
-                        <MenuItem 
-                          icon={<span>🗑️</span>}
-                          color="red.500"
-                          isDisabled={!isAuthenticated}
-                          onClick={() => {
-                            if (isAuthenticated) {
-                              // Guardar el slug y abrir el modal de confirmación
-                              setSlugToDelete(group.slug);
-                              onDeleteModalOpen();
-                            }
-                          }}
-                        >
-                          Eliminar todas las traducciones
-                          {!isAuthenticated && (
-                            <Tooltip label="Debe iniciar sesión para realizar esta acción" placement="right">
-                              <span style={{ marginLeft: '5px' }}>ℹ️</span>
-                            </Tooltip>
-                          )}
-                        </MenuItem>
-                      </MenuList>
-                    </Menu>
-                  </HStack>
-                </Td>
-              </Tr>
+            paginatedGroupedCopys.map(group => (
+              <CopyRow
+                key={group.slug}
+                group={group}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onViewHistory={onViewHistory}
+                languages={languages}
+                showLanguages={showLanguages}
+                groupedCopys={groupedCopys}
+              />
             ))
           )}
         </Tbody>
       </Table>
+      
+      {/* Paginación */}
+      {groupedCopys.length > 0 && (
+        <Pagination
+          totalItems={groupedCopys.length}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          itemsPerPageOptions={[10, 25, 50, 100, 250]}
+          siblingCount={1}
+        />
+      )}
       
       <Text mt={2} fontSize="sm" color="gray.600">
         {`${groupedCopys.length} slugs únicos (${copys.length} traducciones totales)`}
@@ -467,23 +557,22 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                 try {
                   console.log(`Iniciando importación masiva de ${newCopys.length} traducciones...`);
                   
-                  // Mostrar indicador de progreso
-                  toast({
-                    title: 'Iniciando importación',
-                    description: `Procesando ${newCopys.length} traducciones...`,
-                    status: 'info',
-                    duration: 3000,
-                    isClosable: true,
-                  });
+                  // Iniciar el indicador de progreso
+                  onImportStart?.(newCopys.length, `Preparando importación de ${newCopys.length} traducciones...`);
                   
                   // Estadísticas para el resumen
                   let importedCount = 0;
+                  let errorCount = 0;
+                  let warningCount = 0;
                   const importedSlugs = new Set<string>();
                   const slugGroups: Record<string, {count: number, languages: string[]}> = {};
                   
                   // Procesar en lotes para mejorar el rendimiento
                   const BATCH_SIZE = 100; // Procesar 100 elementos a la vez
                   const totalBatches = Math.ceil(newCopys.length / BATCH_SIZE);
+                  
+                  // Cambiar a fase de importación
+                  onStartImporting?.('Importando datos al sistema...');
                   
                   for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
                     const startIndex = batchIndex * BATCH_SIZE;
@@ -492,30 +581,37 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                     
                     console.log(`Procesando lote ${batchIndex + 1}/${totalBatches} (${batch.length} elementos)`);
                     
-                    // Mostrar progreso cada 5 lotes
-                    if (batchIndex % 5 === 0) {
-                      toast({
-                        title: `Progreso: ${Math.round((batchIndex / totalBatches) * 100)}%`,
-                        description: `Procesando lote ${batchIndex + 1} de ${totalBatches}`,
-                        status: 'info',
-                        duration: 1000,
-                        isClosable: true,
-                      });
-                    }
+                    // Actualizar progreso
+                    const currentProgress = startIndex;
+                    onImportProgress?.(
+                      currentProgress,
+                      'importing',
+                      `Procesando lote ${batchIndex + 1} de ${totalBatches}`,
+                      {
+                        processed: importedCount,
+                        errors: errorCount,
+                        warnings: warningCount
+                      }
+                    );
                     
                     // Procesar cada elemento del lote
                     batch.forEach((newCopy) => {
-                      // Estadísticas para el resumen
-                      if (!slugGroups[newCopy.slug]) {
-                        slugGroups[newCopy.slug] = {count: 0, languages: []};
+                      try {
+                        // Estadísticas para el resumen
+                        if (!slugGroups[newCopy.slug]) {
+                          slugGroups[newCopy.slug] = {count: 0, languages: []};
+                        }
+                        slugGroups[newCopy.slug].count++;
+                        slugGroups[newCopy.slug].languages.push(newCopy.language);
+                        
+                        // Añadimos la propiedad isBulkImport para que handleSave no muestre notificaciones individuales
+                        onSave?.({...newCopy, isBulkImport: true});
+                        importedCount++;
+                        importedSlugs.add(newCopy.slug);
+                      } catch (itemError) {
+                        console.error('Error procesando item:', itemError);
+                        errorCount++;
                       }
-                      slugGroups[newCopy.slug].count++;
-                      slugGroups[newCopy.slug].languages.push(newCopy.language);
-                      
-                      // Añadimos la propiedad isBulkImport para que handleSave no muestre notificaciones individuales
-                      onSave({...newCopy, isBulkImport: true});
-                      importedCount++;
-                      importedSlugs.add(newCopy.slug);
                     });
                     
                     // Pequeña pausa entre lotes para no bloquear la UI
@@ -535,30 +631,26 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
                   console.log(`Resumen de importación:`);
                   console.log(`- Total de traducciones: ${importedCount}`);
                   console.log(`- Total de slugs únicos: ${importedSlugs.size}`);
+                  console.log(`- Errores: ${errorCount}`);
                   Object.entries(slugGroups).forEach(([slug, data]) => {
                     console.log(`  - ${slug}: ${data.count} traducciones en ${data.languages.join(', ')}`);
                   });
                   
-                  // Mostramos una única notificación al final del proceso
-                  toast({
-                    title: 'Importación masiva completada',
-                    description: `Se han importado ${importedCount} traducciones (${importedSlugs.size} slugs) correctamente`,
-                    status: 'success',
-                    duration: 5000,
-                    isClosable: true,
-                  });
+                  // Completar la importación
+                  onImportComplete?.(
+                    `Se han importado ${importedCount} traducciones (${importedSlugs.size} slugs) correctamente`,
+                    {
+                      processed: importedCount,
+                      errors: errorCount,
+                      warnings: warningCount
+                    }
+                  );
                   
                   // Cerrar el modal
                   onClose();
                 } catch (error) {
                   console.error('Error durante la importación masiva:', error);
-                  toast({
-                    title: 'Error en la importación',
-                    description: 'Ocurrió un error durante el proceso de importación masiva',
-                    status: 'error',
-                    duration: 5000,
-                    isClosable: true,
-                  });
+                  onImportError?.('Ocurrió un error durante el proceso de importación masiva');
                 }
               };
               

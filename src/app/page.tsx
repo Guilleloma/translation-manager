@@ -52,6 +52,7 @@ import { slugify } from "../utils/slugify";
 import { ImportProgressIndicator } from '../components/common/ImportProgressIndicator';
 import { useImportProgress } from '../hooks/useImportProgress';
 import { downloadGoogleSheetsCSV } from "../utils/exportToGoogleSheets";
+import dataService from '../services/dataService';
 
 export default function Home() {
   const { currentUser, isAuthenticated } = useUser();
@@ -111,37 +112,32 @@ export default function Home() {
   const { isOpen: isDeleteModalOpen, onOpen: onDeleteModalOpen, onClose: onDeleteModalClose } = useDisclosure();
   const [copyToDelete, setCopyToDelete] = useState<{id: string, slug: string} | null>(null);
 
-  // Cargar copys desde localStorage cuando el componente se monta
+  // Cargar copys desde el servicio de datos cuando el componente se monta
   useEffect(() => {
-    console.log('🔄 Cargando copys desde localStorage...');
-    setIsLoading(true); // Activar indicador de carga
+    console.log('🔄 Cargando copys desde el servicio de datos...');
+    setIsLoading(true);
     
-    // Simular una pequeña demora para mostrar el indicador de carga
-    setTimeout(() => {
-      const storedCopys = localStorage.getItem('copys');
-      if (storedCopys) {
-        try {
-          const parsedCopys = JSON.parse(storedCopys);
-          console.log(`Cargados ${parsedCopys.length} copys desde localStorage`);
-          console.log(`✅ Cargados ${parsedCopys.length} copys desde localStorage`);
-          setCopys(parsedCopys);
-        } catch (error) {
-          console.error('Error al cargar copys:', error);
-          toast({
-            title: "Error al cargar datos",
-            description: "No se pudieron cargar los copys almacenados",
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-          });
-        }
-      } else {
-        console.log('⚠️ No hay copys almacenados en localStorage');
-      }
-      setIsLoading(false); // Desactivar indicador de carga
-    }, 500); // Pequeña demora para mostrar el indicador de carga
-  }, [toast]);
-
+    try {
+      const storedCopys = dataService.getCopys();
+      setCopys(storedCopys);
+      console.log(`✅ Copys cargados: ${storedCopys.length}`);
+    } catch (error) {
+      console.error('❌ Error al cargar copys:', error);
+      setCopys([]);
+    } finally {
+      setIsLoading(false);
+    }
+    
+    // Suscribirse a cambios en los copys
+    const unsubscribe = dataService.subscribe('copys', (newCopys) => {
+      console.log('📡 Copys actualizados desde el servicio:', newCopys.length);
+      setCopys(newCopys);
+      setUpdateTrigger(prev => prev + 1);
+    });
+    
+    return unsubscribe;
+  }, []);
+  
   // DEBUG: Mostrar estado cuando cambia
   useEffect(() => {
     console.group('🔍 DEPURACIÓN: ESTADO ACTUAL DE COPYS');
@@ -212,51 +208,49 @@ export default function Home() {
     console.log(`Nuevo estado: ${newStatus}`);
     console.log('Entrada de historial:', historyEntry);
     
-    setCopys(prevCopys => {
-      const copyIndex = prevCopys.findIndex(c => c.id === copyId);
-      
-      if (copyIndex === -1) {
-        console.error(`No se encontró el copy con ID: ${copyId}`);
-        return prevCopys;
-      }
-      
-      const updatedCopys = [...prevCopys];
-      const copyToUpdate = { ...updatedCopys[copyIndex] };
-      
-      // Actualizar el estado del copy
-      copyToUpdate.status = newStatus;
-      copyToUpdate.updatedAt = new Date();
-      
-      // Actualizar fechas según el estado
-      const now = new Date();
-      if (newStatus === 'assigned') {
-        copyToUpdate.assignedAt = now;
-      } else if (newStatus === 'translated') {
-        copyToUpdate.completedAt = now;
-      } else if (newStatus === 'reviewed') {
-        copyToUpdate.reviewedAt = now;
-        copyToUpdate.reviewedBy = currentUser?.id;
-      } else if (newStatus === 'approved') {
-        copyToUpdate.approvedAt = now;
-        copyToUpdate.approvedBy = currentUser?.id;
-      }
-      
-      // Agregar al historial si se proporciona
-      if (historyEntry) {
-        copyToUpdate.history = [
-          ...(copyToUpdate.history || []),
-          historyEntry
-        ];
-      }
-      
-      updatedCopys[copyIndex] = copyToUpdate;
-      
-      console.log('✅ Estado actualizado exitosamente');
+    // Obtener el copy actual
+    const currentCopy = copys.find(c => c.id === copyId);
+    if (!currentCopy) {
+      console.error(`No se encontró el copy con ID: ${copyId}`);
       console.groupEnd();
-      
-      return updatedCopys;
-    });
-  }, [currentUser?.id]);
+      return;
+    }
+    
+    // Crear el copy actualizado
+    const updatedCopy = { ...currentCopy };
+    
+    // Actualizar el estado del copy
+    updatedCopy.status = newStatus;
+    updatedCopy.updatedAt = new Date().toISOString();
+    
+    // Actualizar fechas según el estado
+    const now = new Date();
+    if (newStatus === 'assigned') {
+      updatedCopy.assignedAt = now.toISOString();
+    } else if (newStatus === 'translated') {
+      updatedCopy.completedAt = now.toISOString();
+    } else if (newStatus === 'reviewed') {
+      updatedCopy.reviewedAt = now.toISOString();
+      updatedCopy.reviewedBy = currentUser?.id;
+    } else if (newStatus === 'approved') {
+      updatedCopy.approvedAt = now.toISOString();
+      updatedCopy.approvedBy = currentUser?.id;
+    }
+    
+    // Agregar al historial si se proporciona
+    if (historyEntry) {
+      updatedCopy.history = [
+        ...(updatedCopy.history || []),
+        historyEntry
+      ];
+    }
+    
+    // Usar el servicio de datos para actualizar
+    dataService.updateCopy(copyId, updatedCopy);
+    
+    console.log('✅ Estado actualizado exitosamente');
+    console.groupEnd();
+  }, [currentUser?.id, copys]);
   
   // Manejar la creación o actualización de copys
   const handleSave = async (data: Omit<Copy, 'id' | 'status'>, isImport = false) => {
@@ -292,133 +286,81 @@ export default function Home() {
       if (editingCopy && editingCopy.id) {
         console.log('Actualizando copy existente:', editingCopy.id);
         
-        // Crear copia del array actual para no mutar el estado directamente
-        const updatedCopys = [...copys];
+        // Crear el copy actualizado
+        const updatedCopy: Copy = {
+          ...editingCopy,
+          ...data,
+          updatedAt: new Date().toISOString(),
+          history: [
+            ...(editingCopy.history || []),
+            {
+              id: generateUniqueId(),
+              previousText: editingCopy.text,
+              newText: data.text,
+              changedBy: currentUser?.username || 'Sistema',
+              changedAt: new Date().toISOString(),
+              reason: 'Actualización manual'
+            }
+          ]
+        };
         
-        // Encontrar el índice del copy a actualizar
-        const copyIndex = updatedCopys.findIndex(c => c.id === editingCopy.id);
+        // Usar el servicio de datos para actualizar
+        dataService.updateCopy(editingCopy.id, updatedCopy);
         
-        if (copyIndex !== -1) {
-          // Crear entrada de historial para el cambio
-          const historyEntry: CopyHistory = {
-            id: generateUniqueId(),
-            copyId: editingCopy.id,
-            userId: currentUser ? currentUser.id : 'system',
-            userName: currentUser ? currentUser.username : 'Sistema',
-            createdAt: new Date(),
-            previousText: updatedCopys[copyIndex].text,
-            newText: data.text,
-            comments: 'Edición de texto'
-          };
+        // Mostrar notificación solo si no es importación masiva
+        if (!isImport && !(data as any).isBulkImport) {
+          toast({
+            title: "Copy actualizado",
+            description: `El copy "${data.slug}" ha sido actualizado correctamente`,
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+        
+        // Limpiar el estado de edición
+        setEditingCopy(null);
+        onEditClose();
+      } else {
+        // Crear nuevo copy
+        console.log('Creando nuevo copy');
+        
+        // Verificar duplicados solo si no es importación masiva
+        if (!isImport && !(data as any).isBulkImport) {
+          const existingCopy = copys.find(c => 
+            c.slug === data.slug && c.language === data.language
+          );
           
-          // Simular una pequeña demora para mostrar el indicador de carga
-          if (!isImport && !(data as any).isBulkImport) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-          
-          // Actualizar el copy con los nuevos datos
-          updatedCopys[copyIndex] = {
-            ...updatedCopys[copyIndex],
-            ...data,
-            updatedAt: new Date(),
-            // Añadir la entrada al historial
-            history: [
-              ...(updatedCopys[copyIndex].history || []),
-              historyEntry
-            ]
-          };
-          
-          // Actualizar el estado
-          setCopys(updatedCopys);
-          
-          // Cerrar el modal de edición
-          onEditClose();
-          setEditingCopy(null);
-          
-          // Mostrar notificación solo si no es una importación masiva
-          if (!isImport && !(data as any).isBulkImport) {
+          if (existingCopy) {
             toast({
-              title: "Copy actualizado",
-              description: `Se ha actualizado el copy "${data.slug}"`,
-              status: "success",
-              duration: 3000,
-              isClosable: true,
-            });
-          }
-        } else {
-          console.error('No se encontró el copy a actualizar');
-          if (!isImport && !(data as any).isBulkImport) {
-            toast({
-              title: "Error",
-              description: "No se encontró el copy a actualizar",
+              title: "Copy duplicado",
+              description: `Ya existe un copy con el slug "${data.slug}" para el idioma ${data.language}`,
               status: "error",
               duration: 3000,
               isClosable: true,
             });
-          }
-        }
-      } else {
-        console.log('Creando nuevo copy');
-        
-        // Simular una pequeña demora para mostrar el indicador de carga
-        if (!isImport && !(data as any).isBulkImport) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        
-        // Verificar si ya existe un copy con el mismo slug y language
-        const existingCopy = copys.find(
-          c => c.slug === data.slug && c.language === data.language
-        );
-        
-        if (existingCopy) {
-          console.log(`Ya existe un copy con slug=${data.slug} y language=${data.language}. Actualizando...`);
-          
-          // Actualizar el copy existente
-          const updatedCopys = copys.map(c => {
-            if (c.id === existingCopy.id) {
-              return {
-                ...c,
-                text: data.text,
-                updatedAt: new Date(),
-                // Otros campos que podrían actualizarse
-              };
-            }
-            return c;
-          });
-          
-          setCopys(updatedCopys);
-        } else {
-          // Crear un nuevo copy con ID único
-          const newCopy: Copy = {
-            id: generateUniqueId(), // Generar ID único
-            status: 'not_assigned',
-            slug: data.slug || '', // No generamos slug automáticamente
-            text: data.text || `[Sin texto - ${new Date().toISOString().slice(0, 10)}]`,
-            language: data.language,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          };
-        
-          // Añadir el nuevo copy al array
-          // Para importaciones masivas, usamos una función de actualización para evitar problemas de estado
-          if ((data as any).isBulkImport) {
-            setCopys(prevCopys => [...prevCopys, newCopy]);
-          } else {
-            setCopys([...copys, newCopy]);
+            return;
           }
         }
         
-        // Cerrar el modal de edición si está abierto
-        if (editingCopy) {
-          onEditClose();
-          setEditingCopy(null);
-        }
+        // Crear el nuevo copy
+        const newCopy: Copy = {
+          id: generateUniqueId(),
+          ...data,
+          status: 'not_assigned' as CopyStatus,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          history: []
+        };
         
-        // Mostrar notificación solo si no es una importación masiva
+        // Usar el servicio de datos para agregar
+        dataService.addCopy(newCopy);
+        
+        // Mostrar notificación solo si no es importación masiva
         if (!isImport && !(data as any).isBulkImport) {
           toast({
             title: "Copy creado",
-            description: `Se ha creado un nuevo copy con slug "${newCopy.slug}"`,
+            description: `El copy "${data.slug}" ha sido creado correctamente`,
             status: "success",
             duration: 3000,
             isClosable: true,
@@ -426,38 +368,27 @@ export default function Home() {
         }
       }
       
-      // Si es una importación masiva, no actualizamos localStorage inmediatamente
-      // para evitar sobrescribir importaciones previas
-      if (!(data as any).isBulkImport) {
-        // Actualizar localStorage con el estado MÁS RECIENTE de copys
-        // Importante: Usar el estado más reciente de copys para asegurar que todas las importaciones se guarden
-        setTimeout(() => {
-          console.log('Actualizando localStorage con copys:', copys.length);
-          localStorage.setItem('copys', JSON.stringify(copys));
-        }, 0); // Usar setTimeout para asegurar que se ejecute después de que el estado se haya actualizado
-      }
-      
-      // Forzar actualización de la UI
-      setUpdateTrigger(prev => prev + 1);
+      console.log('✅ Copy guardado exitosamente');
     } catch (error) {
-      console.error('Error al guardar el copy:', error);
+      console.error('❌ Error al guardar copy:', error);
+      
+      // Mostrar error solo si no es importación masiva
       if (!isImport && !(data as any).isBulkImport) {
         toast({
-          title: "Error",
-          description: "Ha ocurrido un error al guardar el copy. Inténtalo de nuevo.",
+          title: "Error al guardar",
+          description: "No se pudo guardar el copy. Por favor, intente nuevamente.",
           status: "error",
           duration: 3000,
           isClosable: true,
         });
       }
     } finally {
-      // Desactivar indicador de carga
+      // Desactivar indicador de carga si no es una importación masiva
       if (!isImport && !(data as any).isBulkImport) {
         setIsSaving(false);
       }
+      console.groupEnd();
     }
-    
-    console.groupEnd();
   };
 
   const exportToJson = async () => {
@@ -1003,12 +934,8 @@ export default function Home() {
                   colorScheme="red" 
                   onClick={() => {
                     if (copyToDelete) {
-                      // Llamar a la función de eliminación
-                      const updatedCopys = copys.filter((copy) => copy.id !== copyToDelete.id);
-                      setCopys(updatedCopys);
-                      
-                      // Actualizar localStorage
-                      localStorage.setItem('copys', JSON.stringify(updatedCopys));
+                      // Usar el servicio de datos para eliminar
+                      dataService.deleteCopy(copyToDelete.id);
                       
                       // Mostrar notificación
                       toast({
