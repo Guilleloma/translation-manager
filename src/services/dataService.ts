@@ -565,38 +565,70 @@ class DataService {
   }
 
   // Método para forzar recarga de datos
+  // Se utiliza para actualizar todos los datos en la aplicación cuando hay cambios importantes
   async refreshData(): Promise<void> {
-    console.log('[DataService] Forzando recarga de datos...');
+    console.log('🔄 [DataService] Forzando recarga de datos...');
     
-    // Reiniciar el estado de inicialización
-    this.isInitialized = false;
-    this.initialLoadPromise = null;
-    
-    // Cargar datos desde la fuente apropiada (MongoDB en servidor, API en cliente)
-    await this.initializeData();
-    
-    // Notificar a los listeners con los datos actualizados
-    const copys = await this.getCopys();
-    const users = await this.getUsers();
-    
-    this.notifyListeners('copys', copys);
-    this.notifyListeners('users', users);
-    
-    console.log('[DataService] Recarga de datos completada');
+    try {
+      // Si estamos en un refresh completo, reiniciar el estado de inicialización
+      this.isInitialized = false;
+      this.initialLoadPromise = null;
+      
+      // Cargar datos frescos desde la fuente apropiada (MongoDB en servidor, API en cliente)
+      await this.initializeData();
+      
+      // Obtener los datos actualizados
+      const copys = await this.getCopys();
+      const users = await this.getUsers();
+      
+      // Notificar a los listeners con los datos actualizados
+      this.notifyListeners('copys', copys);
+      this.notifyListeners('users', users);
+      
+      // Emitir evento global para que otros componentes se actualicen
+      if (typeof window !== 'undefined') {
+        console.log(`📢 [DataService] Notificando actualización global: ${copys.length} copys`);
+        window.dispatchEvent(new Event('dataServiceRefreshed'));
+      }
+      
+      console.log(`✅ [DataService] Recarga de datos completada: ${copys.length} copys`);
+      return Promise.resolve();
+    } catch (error) {
+      console.error('❌ [DataService] Error al recargar datos:', error);
+      return Promise.reject(error);
+    }
   }
 
-  // Método para debug
-  debug(): void {
-    console.group('[DataService] DEBUG INFO');
-    console.log('Copys en memoria:', this.getCopys().length);
-    console.log('Users en memoria:', this.getUsers().length);
-    console.log('MongoDB habilitado:', typeof window === 'undefined' && !!connectDB && !!CopyModel);
-    console.log('API disponible:', typeof window !== 'undefined');
-    console.groupEnd();
+  // Log de debug para analizar el estado de los copys
+  debugCopys() {
+    const copys = this.getCopysSync();
+    
+    if (!copys.length) {
+      console.log('No hay copys disponibles');
+      return;
+    }
+    
+    console.log('========================');
+    console.log(`ESTADO ACTUAL DE COPYS: ${copys.length} total`);
+    
+    // Contar por idioma
+    const byLanguage: Record<string, number> = {};
+    
+    // Contar por estado
+    const byStatus: Record<string, number> = {};
     
     copys.forEach(copy => {
-      byLanguage[copy.language] = (byLanguage[copy.language] || 0) + 1;
-      byStatus[copy.status] = (byStatus[copy.status] || 0) + 1;
+      // Contar por idioma
+      if (!byLanguage[copy.language]) {
+        byLanguage[copy.language] = 0;
+      }
+      byLanguage[copy.language]++;
+      
+      // Contar por estado
+      if (!byStatus[copy.status]) {
+        byStatus[copy.status] = 0;
+      }
+      byStatus[copy.status]++;
     });
     
     console.log('\nCopys por idioma:');
