@@ -241,7 +241,8 @@ class DataService {
     if (typeof window === 'undefined' && connectDB && CopyModel) {
       try {
         await connectDB();
-        const copysFromDB = await CopyModel.find().lean();
+        // Ordenar por fecha de creación descendente (más recientes primero)
+        const copysFromDB = await CopyModel.find().sort({ createdAt: -1 }).lean();
         const copys = copysFromDB.map(this.transformMongoDBCopyToApp);
         
         console.log(`[DataService] Copys cargados desde MongoDB (servidor): ${copys.length}`);
@@ -251,8 +252,14 @@ class DataService {
         return [];
       }
     } else {
-      // Si estamos en el cliente, usar localStorage
-      return this.getLocalCopys();
+      // Si estamos en el cliente, usar localStorage y ordenar por fecha
+      const localCopys = this.getLocalCopys();
+      // Ordenar por fecha de creación descendente (más recientes primero)
+      return localCopys.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA; // Orden descendente
+      });
     }
   }
   
