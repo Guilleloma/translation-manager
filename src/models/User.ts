@@ -64,7 +64,6 @@ const UserSchema: Schema = new Schema({
 /**
  * Índices para optimizar consultas
  */
-UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ languages: 1 });
 

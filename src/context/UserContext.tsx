@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types/user';
-import { seedUsers, resetToSeedData } from '../utils/seedData';
+import { seedUsers } from '../utils/seedData';
 
 /**
  * Context interface that defines all user-related operations

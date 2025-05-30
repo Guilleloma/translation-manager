@@ -558,25 +558,3 @@ export function loadSeedData(): void {
     console.log(`✅ ${seedCopys.length} copys cargados`);
   }
 }
-
-/**
- * Restaura los datos semilla, sobrescribiendo cualquier dato existente
- * Útil para resetear el estado de la aplicación para demos o pruebas
- */
-export function resetToSeedData(): void {
-  console.log('🔄 Restaurando datos semilla...');
-  
-  // Guardar usuario actual antes de resetear
-  const currentUser = localStorage.getItem('user');
-  
-  // Resetear datos
-  localStorage.setItem('users', JSON.stringify(seedUsers));
-  localStorage.setItem('copys', JSON.stringify(seedCopys));
-  
-  // Restaurar usuario actual si existe
-  if (currentUser) {
-    localStorage.setItem('user', currentUser);
-  }
-  
-  console.log('✅ Datos restaurados a su estado inicial');
-}

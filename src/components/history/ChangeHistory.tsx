@@ -45,10 +45,12 @@ export const ChangeHistory: React.FC<ChangeHistoryProps> = ({ history }) => {
   // Log para debugging
   console.log('Rendering ChangeHistory with entries:', history?.length);
   
-  // Color de fondo para las entradas del historial
+  // Color de fondo para las entradas del historial - SIEMPRE llamar a hooks al principio del componente
+  // y nunca dentro de condicionales para evitar el error "Rendered fewer hooks than expected"
   const bgColor = useColorModeValue('gray.50', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
+  // Renderizar un mensaje si no hay historial
   if (!history || history.length === 0) {
     return (
       <Box p={4} borderRadius="md" bg={bgColor}>

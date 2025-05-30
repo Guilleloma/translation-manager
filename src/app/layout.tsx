@@ -5,7 +5,6 @@ import { ChakraProviderWrapper } from "../components/ChakraProviderClient";
 import Header from "../components/layout/Header";
 import SeedDataLoader from "../components/SeedDataLoader";
 import LoadingIndicator from "../components/layout/LoadingIndicator";
-import ResetDataButton from "../components/admin/ResetDataButton";
 import { Box } from "@chakra-ui/react";
 
 // Importar utilidad de debug solo en desarrollo
@@ -47,8 +46,6 @@ export default function RootLayout({
           <Box as="main" minH="calc(100vh - 64px)">
             {children}
           </Box>
-          {/* Botón para resetear datos y probar Sprint 10 */}
-          <ResetDataButton />
         </ChakraProviderWrapper>
       </body>
     </html>

@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:optimized": "NEXT_RUNTIME_OPTIMIZE=1 next dev --turbopack",
+    "dev:optimized:mongodb": "npm run mongodb:check && NEXT_RUNTIME_OPTIMIZE=1 next dev --turbopack",
     "dev:mongodb": "./scripts/check-mongodb.sh && next dev --turbopack",
     "build": "next build",
     "start": "next start",
@@ -12,9 +14,6 @@
     "test:coverage": "jest --coverage",
     "test:mongodb": "./scripts/run-mongodb-tests.sh",
     "mongodb:check": "./scripts/check-mongodb.sh",
-    "mongodb:migrate": "npm run build && node scripts/migrate-mongodb-data.js",
-    "mongodb:clear": "npm run build && node -e \"require('./dist/services/seedMigration').clearAllMongoDBData().then(() => console.log('Base de datos limpiada')).catch(console.error)\"",
-    "mongodb:status": "npm run build && node -e \"require('./dist/services/seedMigration').checkMigrationStatus().then(console.log).catch(console.error)\"",
     "validate:json": "node -e \"console.log('🔍 Validación de estructura JSON i18n: (Implementada en UI con alertas visuales ⚠️)')\"",
     "validate": "npm run lint && npm run test && npm run validate:json"
   },
