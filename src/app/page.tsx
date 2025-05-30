@@ -213,6 +213,7 @@ export default function Home() {
   // Filtrar copys según la búsqueda, estado y etiquetas
   useEffect(() => {
     console.log(`Aplicando filtros - Búsqueda: "${searchQuery}", Estado: ${statusFilter}, Etiqueta: ${tagFilter}`);
+    console.log(`Total de copys antes de filtrar: ${copys.length}`);
     
     // Aplicar filtros en secuencia: primero por texto, luego por estado, finalmente por etiqueta
     let filtered = [...copys];
@@ -242,6 +243,14 @@ export default function Home() {
       console.log(`Filtro de etiqueta aplicado: ${filtered.length}/${copys.length} copys con etiqueta ${tagFilter}`);
     }
     
+    // Ordenar por fecha de creación (más recientes primero)
+    filtered = filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA; // Orden descendente
+    });
+    
+    console.log(`Total de copys después de filtrar: ${filtered.length}`);
     setFilteredCopys(filtered);
   }, [searchQuery, statusFilter, tagFilter, copys, updateTrigger]); // Añadido tagFilter a las dependencias
 
@@ -497,10 +506,58 @@ export default function Home() {
         if (result.success) {
           console.log('✅ Copy creado exitosamente:', result.copy.id);
           
-          // Actualizar la lista de copys - CRÍTICO para que aparezca en la UI
-          console.log('🔄 Actualizando lista de copys...');
-          await refreshCopysList();
-          console.log('✅ Lista actualizada');
+          // Actualizar inmediatamente el estado local para mostrar el nuevo copy sin necesidad de recargar
+          if (!isImport && !(data as any).isBulkImport) {
+            // Agregar el nuevo copy directamente al estado local
+            const newCopy = result.copy;
+            console.log('🔄 Actualizando estado local con el nuevo copy:', newCopy.id);
+            
+            // Actualizar el estado de copys directamente
+            setCopys(prevCopys => {
+              // Verificar si el copy ya existe en el estado
+              const exists = prevCopys.some(c => c.id === newCopy.id);
+              if (!exists) {
+                // Agregar el nuevo copy al inicio del array para que aparezca primero
+                return [newCopy, ...prevCopys];
+              }
+              return prevCopys;
+            });
+            
+            // Actualizar también el estado filtrado directamente para que aparezca inmediatamente
+            setFilteredCopys(prevFiltered => {
+              // Verificar si el copy ya existe en el estado filtrado
+              const exists = prevFiltered.some(c => c.id === newCopy.id);
+              
+              // Solo agregar si cumple con los filtros actuales o si no hay filtros
+              const shouldAdd = !exists && (
+                (statusFilter === "all" || newCopy.status === statusFilter) &&
+                (tagFilter === "all" || (newCopy.tags && newCopy.tags.includes(tagFilter))) &&
+                (searchQuery.trim() === "" || 
+                 newCopy.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                 newCopy.text.toLowerCase().includes(searchQuery.toLowerCase()))
+              );
+              
+              if (shouldAdd) {
+                // Agregar al inicio y mantener el orden
+                return [newCopy, ...prevFiltered].sort((a, b) => {
+                  const dateA = new Date(a.createdAt || 0).getTime();
+                  const dateB = new Date(b.createdAt || 0).getTime();
+                  return dateB - dateA; // Orden descendente
+                });
+              }
+              return prevFiltered;
+            });
+            
+            // Forzar la actualización de la UI
+            setUpdateTrigger(prev => prev + 1);
+            
+            console.log('✅ Estado local actualizado con el nuevo copy');
+          } else {
+            // Si es una importación masiva, actualizar toda la lista
+            console.log('🔄 Actualizando lista de copys...');
+            await refreshCopysList();
+            console.log('✅ Lista actualizada');
+          }
           
           // Limpiar el formulario solo si no es una importación masiva
           if (!isImport && !(data as any).isBulkImport) {
