@@ -1,10 +1,32 @@
 /**
  * Servicio de datos centralizado
- * Esta capa de abstracción facilita la futura migración a una base de datos
+ * Esta capa de abstracción facilita el uso de múltiples fuentes de datos
+ * y la transición entre almacenamiento local y MongoDB
  */
 
 import { Copy } from '../types/copy';
 import { User } from '../types/user';
+import apiService from './apiService';
+
+// Importaciones dinámicas para evitar errores en el cliente
+let connectDB: any = null;
+let CopyModel: any = null;
+let UserModel: any = null;
+
+// Solo importar en el servidor
+if (typeof window === 'undefined') {
+  try {
+    const mongoModule = require('../lib/mongodb');
+    const copyModule = require('../models/Copy');
+    const userModule = require('../models/User');
+    
+    connectDB = mongoModule.connectDB;
+    CopyModel = copyModule.default;
+    UserModel = userModule.default;
+  } catch (error) {
+    console.warn('[DataService] MongoDB modules not available:', error);
+  }
+}
 
 // Event emitter para notificar cambios
 type DataChangeListener = (data: any) => void;
@@ -17,6 +39,10 @@ class DataService {
     copys: [],
     users: []
   };
+  
+  private isInitialized = false;
+  private initialLoadPromise: Promise<void> | null = null;
+  private useMongoDBPrimary = typeof window === 'undefined'; // Usar MongoDB solo en el servidor
 
   constructor() {
     // Escuchar cambios en localStorage desde otras pestañas
@@ -28,61 +54,169 @@ class DataService {
           this.notifyListeners('users', this.getUsers());
         }
       });
+      
+      // Iniciar carga de datos desde MongoDB al arrancar
+      this.initializeData();
     }
   }
-
-  // Métodos para copys
-  getCopys(): Copy[] {
+  
+  // Inicializa datos desde MongoDB o localStorage
+  private async initializeData(): Promise<void> {
+    if (this.initialLoadPromise) return this.initialLoadPromise;
+    
+    this.initialLoadPromise = new Promise<void>(async (resolve) => {
+      try {
+        // Verificar si estamos en el servidor y podemos usar MongoDB
+        if (typeof window === 'undefined' && connectDB) {
+          console.log('[DataService] Inicializando datos desde MongoDB (servidor)...');
+          await connectDB();
+          
+          // Verificar si la base de datos está vacía y ejecutar migración si es necesario
+          const usersCount = await UserModel.countDocuments();
+          if (usersCount === 0) {
+            console.log('[DataService] Base de datos vacía, cargando datos semilla...');
+            // La base de datos está vacía, pero ya no necesitamos migración automática
+            // Los datos se crearán conforme se vayan añadiendo
+          }
+          
+          // Cargar datos desde MongoDB
+          const copysFromDB = await CopyModel.find().lean();
+          const usersFromDB = await UserModel.find().lean();
+          
+          console.log(`[DataService] Datos cargados desde MongoDB: ${copysFromDB.length} copys, ${usersFromDB.length} usuarios`);
+          
+          // Transformar documentos de MongoDB a objetos normales para la aplicación
+          const copys = copysFromDB.map(this.transformMongoDBCopyToApp);
+          const users = usersFromDB.map(this.transformMongoDBUserToApp);
+          
+          // Notificar a los listeners
+          this.notifyListeners('copys', copys);
+          this.notifyListeners('users', users);
+          
+          this.isInitialized = true;
+          console.log('[DataService] Inicialización completa desde MongoDB');
+          resolve();
+          return;
+        }
+        
+        // Si estamos en el cliente, intentar obtener datos del servidor primero
+        if (typeof window !== 'undefined') {
+          try {
+            console.log('[DataService] Intentando obtener datos del servidor via API...');
+            const serverData = await apiService.fetchAllData();
+            
+            if (serverData) {
+              console.log(`[DataService] Datos obtenidos del servidor: ${serverData.copys.length} copys, ${serverData.users.length} usuarios`);
+              
+              // Actualizar localStorage con los datos del servidor
+              localStorage.setItem('copys', JSON.stringify(serverData.copys));
+              localStorage.setItem('users', JSON.stringify(serverData.users));
+              
+              // Notificar a los listeners
+              this.notifyListeners('copys', serverData.copys);
+              this.notifyListeners('users', serverData.users);
+              
+              this.isInitialized = true;
+              console.log('[DataService] Inicialización completa desde API');
+              resolve();
+              return;
+            }
+          } catch (apiError) {
+            console.error('[DataService] Error al obtener datos del servidor:', apiError);
+            console.log('[DataService] Usando localStorage como fallback...');
+          }
+          
+          // Si no se pudieron obtener datos del servidor, usar localStorage
+          console.log('[DataService] Inicializando datos desde localStorage...');
+          
+          // Notificar con datos de localStorage
+          const copys = this.getLocalCopys();
+          const users = this.getLocalUsers();
+          
+          this.notifyListeners('copys', copys);
+          this.notifyListeners('users', users);
+          
+          console.log(`[DataService] Datos cargados desde localStorage: ${copys.length} copys, ${users.length} usuarios`);
+          this.isInitialized = true;
+          resolve();
+          return;
+        }
+        
+        // Si llegamos aquí, no tenemos datos
+        console.log('[DataService] No hay fuente de datos disponible');
+        this.isInitialized = true;
+        resolve();
+      } catch (error) {
+        console.error('[DataService] Error inicializando datos:', error);
+        console.log('[DataService] Usando datos de localStorage como fallback');
+        
+        // Notificar con datos de localStorage si estamos en el cliente
+        if (typeof window !== 'undefined') {
+          this.notifyListeners('copys', this.getLocalCopys());
+          this.notifyListeners('users', this.getLocalUsers());
+        }
+        
+        this.isInitialized = true;
+        resolve();
+      }
+    });
+    
+    return this.initialLoadPromise;
+  }
+  
+  // Transformadores entre MongoDB y App
+  private transformMongoDBCopyToApp(dbCopy: any): Copy {
+    return {
+      id: dbCopy._id.toString(),
+      slug: dbCopy.slug,
+      text: dbCopy.text,
+      language: dbCopy.language,
+      status: dbCopy.status,
+      createdAt: dbCopy.createdAt,
+      updatedAt: dbCopy.updatedAt,
+      assignedTo: dbCopy.assignedTo?.toString(),
+      assignedAt: dbCopy.assignedAt,
+      completedAt: dbCopy.completedAt,
+      reviewedBy: dbCopy.reviewedBy?.toString(),
+      reviewedAt: dbCopy.reviewedAt,
+      approvedBy: dbCopy.approvedBy?.toString(),
+      approvedAt: dbCopy.approvedAt,
+      tags: dbCopy.tags || [],
+      comments: dbCopy.comments || [],
+      history: dbCopy.history || [],
+      isBulkImport: dbCopy.isBulkImport || false
+    };
+  }
+  
+  private transformMongoDBUserToApp(dbUser: any): User {
+    return {
+      id: dbUser._id.toString(),
+      username: dbUser.username,
+      email: dbUser.email,
+      role: dbUser.role,
+      languages: dbUser.languages || [],
+      isActive: dbUser.isActive || true
+    };
+  }
+  
+  // Obtener datos desde localStorage (caché)
+  private getLocalCopys(): Copy[] {
     if (typeof window === 'undefined') return [];
     
     try {
       const copysStr = localStorage.getItem('copys');
       if (copysStr) {
         const copys = JSON.parse(copysStr);
-        console.log(`[DataService] Copys cargados: ${copys.length}`);
+        console.log(`[DataService] Copys cargados de localStorage: ${copys.length}`);
         return copys;
       }
     } catch (error) {
-      console.error('[DataService] Error al cargar copys:', error);
+      console.error('[DataService] Error al cargar copys de localStorage:', error);
     }
     return [];
   }
-
-  setCopys(copys: Copy[]): void {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      localStorage.setItem('copys', JSON.stringify(copys));
-      console.log(`[DataService] Copys guardados: ${copys.length}`);
-      this.notifyListeners('copys', copys);
-    } catch (error) {
-      console.error('[DataService] Error al guardar copys:', error);
-    }
-  }
-
-  addCopy(copy: Copy): void {
-    const copys = this.getCopys();
-    copys.push(copy);
-    this.setCopys(copys);
-  }
-
-  updateCopy(copyId: string, updates: Partial<Copy>): void {
-    const copys = this.getCopys();
-    const index = copys.findIndex(c => c.id === copyId);
-    if (index !== -1) {
-      copys[index] = { ...copys[index], ...updates };
-      this.setCopys(copys);
-    }
-  }
-
-  deleteCopy(copyId: string): void {
-    const copys = this.getCopys();
-    const filtered = copys.filter(c => c.id !== copyId);
-    this.setCopys(filtered);
-  }
-
-  // Métodos para usuarios
-  getUsers(): User[] {
+  
+  private getLocalUsers(): User[] {
     if (typeof window === 'undefined') return [];
     
     try {
@@ -91,16 +225,305 @@ class DataService {
         return JSON.parse(usersStr);
       }
     } catch (error) {
-      console.error('[DataService] Error al cargar usuarios:', error);
+      console.error('[DataService] Error al cargar usuarios de localStorage:', error);
     }
     return [];
   }
 
-  setUsers(users: User[]): void {
-    if (typeof window === 'undefined') return;
+  // Métodos para copys
+  async getCopys(): Promise<Copy[]> {
+    // Asegurar inicialización
+    if (!this.isInitialized) {
+      await this.initializeData();
+    }
     
+    // Si estamos en el servidor y podemos usar MongoDB
+    if (typeof window === 'undefined' && connectDB && CopyModel) {
+      try {
+        await connectDB();
+        const copysFromDB = await CopyModel.find().lean();
+        const copys = copysFromDB.map(this.transformMongoDBCopyToApp);
+        
+        console.log(`[DataService] Copys cargados desde MongoDB (servidor): ${copys.length}`);
+        return copys;
+      } catch (error) {
+        console.error('[DataService] Error al cargar copys desde MongoDB:', error);
+        return [];
+      }
+    } else {
+      // Si estamos en el cliente, usar localStorage
+      return this.getLocalCopys();
+    }
+  }
+  
+  // Versión sincrónica para compatibilidad
+  getCopysSync(): Copy[] {
+    return this.getLocalCopys();
+  }
+
+  async setCopys(copys: Copy[]): Promise<void> {
     try {
-      localStorage.setItem('users', JSON.stringify(users));
+      // Si estamos en el cliente, guardar en localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('copys', JSON.stringify(copys));
+        console.log(`[DataService] Copys guardados en localStorage: ${copys.length}`);
+      }
+      
+      // Si estamos en el servidor y podemos usar MongoDB
+      if (typeof window === 'undefined' && connectDB && CopyModel) {
+        try {
+          await connectDB();
+          
+          // Eliminar todos los copys y reemplazarlos (enfoque simple)
+          await CopyModel.deleteMany({});
+          
+          // Transformar y guardar
+          const copysToSave = copys.map(copy => ({
+            _id: copy.id,
+            slug: copy.slug,
+            text: copy.text,
+            language: copy.language,
+            status: copy.status,
+            createdAt: copy.createdAt,
+            updatedAt: copy.updatedAt,
+            assignedTo: copy.assignedTo,
+            assignedAt: copy.assignedAt,
+            completedAt: copy.completedAt,
+            reviewedBy: copy.reviewedBy,
+            reviewedAt: copy.reviewedAt,
+            approvedBy: copy.approvedBy,
+            approvedAt: copy.approvedAt,
+            tags: copy.tags || [],
+            comments: copy.comments || [],
+            history: copy.history || [],
+            isBulkImport: copy.isBulkImport || false
+          }));
+          
+          await CopyModel.insertMany(copysToSave);
+          console.log(`[DataService] ${copys.length} copys guardados en MongoDB`);
+        } catch (error) {
+          console.error('[DataService] Error al guardar copys en MongoDB:', error);
+        }
+      }
+      
+      // Notificar a los listeners en cualquier caso
+      this.notifyListeners('copys', copys);
+    } catch (error) {
+      console.error('[DataService] Error al guardar copys:', error);
+    }
+  }
+
+  async addCopy(copy: Copy): Promise<void> {
+    // Guardar en localStorage si estamos en el cliente
+    if (typeof window !== 'undefined') {
+      // Primero intentar sincronizar con el servidor
+      try {
+        const serverCopy = await apiService.createDocument('copy', copy);
+        if (serverCopy) {
+          console.log(`[DataService] Copy sincronizado con el servidor via API`);
+          
+          // Usar el copy devuelto por el servidor (con el ID correcto)
+          const finalCopy = { ...copy, ...serverCopy };
+          
+          // Agregar a la lista en memoria
+          const copys = await this.getCopys();
+          copys.push(finalCopy);
+          
+          // Guardar en localStorage y notificar
+          localStorage.setItem('copys', JSON.stringify(copys));
+          this.notifyListeners('copys', copys);
+          
+          return;
+        }
+      } catch (error) {
+        console.error('[DataService] Error al sincronizar copy con el servidor:', error);
+        console.warn('[DataService] Guardando copy solo localmente como fallback');
+      }
+      
+      // Fallback: guardar solo localmente si falla la sincronización
+      const copys = await this.getCopys();
+      copys.push(copy);
+      localStorage.setItem('copys', JSON.stringify(copys));
+      this.notifyListeners('copys', copys);
+    }
+    
+    // Versión optimizada para MongoDB (solo en el servidor)
+    if (typeof window === 'undefined' && connectDB && CopyModel) {
+      try {
+        await connectDB();
+        
+        const copyToSave = {
+          _id: copy.id,
+          slug: copy.slug,
+          text: copy.text,
+          language: copy.language,
+          status: copy.status,
+          createdAt: copy.createdAt,
+          updatedAt: copy.updatedAt,
+          assignedTo: copy.assignedTo,
+          assignedAt: copy.assignedAt,
+          completedAt: copy.completedAt,
+          reviewedBy: copy.reviewedBy,
+          reviewedAt: copy.reviewedAt,
+          approvedBy: copy.approvedBy,
+          approvedAt: copy.approvedAt,
+          tags: copy.tags || [],
+          comments: copy.comments || [],
+          history: copy.history || [],
+          isBulkImport: copy.isBulkImport || false
+        };
+        
+        await CopyModel.create(copyToSave);
+        console.log(`[DataService] Copy ${copy.id} guardado directamente en MongoDB`);
+      } catch (error) {
+        console.error('[DataService] Error al guardar copy en MongoDB:', error);
+      }
+    } else {
+      // Si no estamos en el servidor o no podemos usar MongoDB, usar setCopys
+      await this.setCopys(copys);
+    }
+  }
+
+  async updateCopy(copyId: string, updates: Partial<Copy>): Promise<void> {
+    // Actualizar en memoria
+    const copys = await this.getCopys();
+    const index = copys.findIndex(c => c.id === copyId);
+    if (index !== -1) {
+      copys[index] = { ...copys[index], ...updates };
+      
+      // Actualizar localStorage si estamos en el cliente
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('copys', JSON.stringify(copys));
+        this.notifyListeners('copys', copys);
+        
+        // Sincronizar con el servidor mediante API
+        try {
+          const updatedCopy = { ...copys[index] };
+          await apiService.updateDocument('copy', updatedCopy);
+          console.log(`[DataService] Copy ${copyId} actualizado en el servidor via API`);
+        } catch (error) {
+          console.error('[DataService] Error al actualizar copy en el servidor:', error);
+        }
+      }
+    } else {
+      console.log(`[DataService] No se encontró el copy ${copyId} para actualizar`);
+      return;
+    }
+    
+    // Actualizar en MongoDB si estamos en el servidor
+    if (typeof window === 'undefined' && connectDB && CopyModel) {
+      try {
+        await connectDB();
+        await CopyModel.updateOne({ _id: copyId }, { $set: updates });
+        console.log(`[DataService] Copy ${copyId} actualizado en MongoDB`);
+      } catch (error) {
+        console.error('[DataService] Error al actualizar copy en MongoDB:', error);
+      }
+    } else {
+      // Si no estamos en el servidor o no podemos usar MongoDB, usar setCopys
+      await this.setCopys(copys);
+    }
+  }
+
+  async deleteCopy(copyId: string): Promise<void> {
+    // Eliminar de memoria
+    const copys = await this.getCopys();
+    const filtered = copys.filter(c => c.id !== copyId);
+    
+    // Actualizar localStorage si estamos en el cliente
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('copys', JSON.stringify(filtered));
+      this.notifyListeners('copys', filtered);
+      
+      // Sincronizar con el servidor mediante API
+      try {
+        await apiService.deleteDocument('copy', copyId);
+        console.log(`[DataService] Copy ${copyId} eliminado del servidor via API`);
+      } catch (error) {
+        console.error('[DataService] Error al eliminar copy del servidor:', error);
+      }
+    }
+    
+    // Eliminar de MongoDB si estamos en el servidor
+    if (typeof window === 'undefined' && connectDB && CopyModel) {
+      try {
+        await connectDB();
+        await CopyModel.deleteOne({ _id: copyId });
+        console.log(`[DataService] Copy ${copyId} eliminado de MongoDB`);
+      } catch (error) {
+        console.error('[DataService] Error al eliminar copy de MongoDB:', error);
+      }
+    } else {
+      // Si no estamos en el servidor o no podemos usar MongoDB, usar setCopys
+      await this.setCopys(filtered);
+    }
+  }
+
+  // Métodos para usuarios
+  async getUsers(): Promise<User[]> {
+    // Asegurar inicialización
+    if (!this.isInitialized) {
+      await this.initializeData();
+    }
+    
+    // Si estamos en el servidor y podemos usar MongoDB
+    if (typeof window === 'undefined' && connectDB && UserModel) {
+      try {
+        await connectDB();
+        const usersFromDB = await UserModel.find().lean();
+        const users = usersFromDB.map(this.transformMongoDBUserToApp);
+        
+        console.log(`[DataService] Usuarios cargados desde MongoDB (servidor): ${users.length}`);
+        return users;
+      } catch (error) {
+        console.error('[DataService] Error al cargar usuarios desde MongoDB:', error);
+        return [];
+      }
+    } else {
+      // Si estamos en el cliente, usar localStorage
+      return this.getLocalUsers();
+    }
+  }
+  
+  // Versión sincrónica para compatibilidad
+  getUsersSync(): User[] {
+    return this.getLocalUsers();
+  }
+
+  async setUsers(users: User[]): Promise<void> {
+    try {
+      // Si estamos en el cliente, guardar en localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('users', JSON.stringify(users));
+        console.log(`[DataService] Usuarios guardados en localStorage: ${users.length}`);
+      }
+      
+      // Si estamos en el servidor y podemos usar MongoDB
+      if (typeof window === 'undefined' && connectDB && UserModel) {
+        try {
+          await connectDB();
+          
+          // Eliminar todos los usuarios y reemplazarlos (enfoque simple)
+          await UserModel.deleteMany({});
+          
+          // Transformar y guardar
+          const usersToSave = users.map(user => ({
+            _id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            languages: user.languages || [],
+            isActive: user.isActive || true
+          }));
+          
+          await UserModel.insertMany(usersToSave);
+          console.log(`[DataService] ${users.length} usuarios guardados en MongoDB`);
+        } catch (error) {
+          console.error('[DataService] Error al guardar usuarios en MongoDB:', error);
+        }
+      }
+      
+      // Notificar a los listeners en cualquier caso
       this.notifyListeners('users', users);
     } catch (error) {
       console.error('[DataService] Error al guardar usuarios:', error);
@@ -131,24 +554,34 @@ class DataService {
   }
 
   // Método para forzar recarga de datos
-  refreshData(): void {
+  async refreshData(): Promise<void> {
     console.log('[DataService] Forzando recarga de datos...');
-    this.notifyListeners('copys', this.getCopys());
-    this.notifyListeners('users', this.getUsers());
+    
+    // Reiniciar el estado de inicialización
+    this.isInitialized = false;
+    this.initialLoadPromise = null;
+    
+    // Cargar datos desde la fuente apropiada (MongoDB en servidor, API en cliente)
+    await this.initializeData();
+    
+    // Notificar a los listeners con los datos actualizados
+    const copys = await this.getCopys();
+    const users = await this.getUsers();
+    
+    this.notifyListeners('copys', copys);
+    this.notifyListeners('users', users);
+    
+    console.log('[DataService] Recarga de datos completada');
   }
 
-  // Método de debug
+  // Método para debug
   debug(): void {
-    const copys = this.getCopys();
-    const users = this.getUsers();
-    
-    console.log('=== DataService Debug ===');
-    console.log(`Copys: ${copys.length}`);
-    console.log(`Users: ${users.length}`);
-    
-    // Estadísticas de copys
-    const byLanguage: Record<string, number> = {};
-    const byStatus: Record<string, number> = {};
+    console.group('[DataService] DEBUG INFO');
+    console.log('Copys en memoria:', this.getCopys().length);
+    console.log('Users en memoria:', this.getUsers().length);
+    console.log('MongoDB habilitado:', typeof window === 'undefined' && !!connectDB && !!CopyModel);
+    console.log('API disponible:', typeof window !== 'undefined');
+    console.groupEnd();
     
     copys.forEach(copy => {
       byLanguage[copy.language] = (byLanguage[copy.language] || 0) + 1;

@@ -145,16 +145,22 @@ export default function Home() {
     console.log('🔄 Cargando copys desde el servicio de datos...');
     setIsLoading(true);
     
-    try {
-      const storedCopys = dataService.getCopys();
-      setCopys(storedCopys);
-      console.log(`✅ Copys cargados: ${storedCopys.length}`);
-    } catch (error) {
-      console.error('❌ Error al cargar copys:', error);
-      setCopys([]);
-    } finally {
-      setIsLoading(false);
-    }
+    const loadData = async () => {
+      try {
+        // Usar la versión asíncrona para cargar desde MongoDB
+        const storedCopys = await dataService.getCopys();
+        setCopys(storedCopys);
+        console.log(`✅ Copys cargados: ${storedCopys.length}`);
+      } catch (error) {
+        console.error('❌ Error al cargar copys:', error);
+        setCopys([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // Ejecutar la función asíncrona
+    loadData();
     
     // Suscribirse a cambios en los copys
     const unsubscribe = dataService.subscribe('copys', (newCopys) => {
@@ -230,7 +236,7 @@ export default function Home() {
   }, [searchQuery, statusFilter, tagFilter, copys, updateTrigger]); // Añadido tagFilter a las dependencias
 
   // Manejar cambios de estado de las traducciones
-  const handleStatusChange = useCallback((copyId: string, newStatus: CopyStatus, historyEntry?: CopyHistory) => {
+  const handleStatusChange = useCallback(async (copyId: string, newStatus: CopyStatus, historyEntry?: CopyHistory) => {
     console.group('🔄 CAMBIO DE ESTADO');
     console.log(`Copy ID: ${copyId}`);
     console.log(`Nuevo estado: ${newStatus}`);
@@ -249,19 +255,19 @@ export default function Home() {
     
     // Actualizar el estado del copy
     updatedCopy.status = newStatus;
-    updatedCopy.updatedAt = new Date().toISOString();
+    updatedCopy.updatedAt = new Date();
     
     // Actualizar fechas según el estado
     const now = new Date();
     if (newStatus === 'assigned') {
-      updatedCopy.assignedAt = now.toISOString();
+      updatedCopy.assignedAt = now;
     } else if (newStatus === 'translated') {
-      updatedCopy.completedAt = now.toISOString();
+      updatedCopy.completedAt = now;
     } else if (newStatus === 'reviewed') {
-      updatedCopy.reviewedAt = now.toISOString();
+      updatedCopy.reviewedAt = now;
       updatedCopy.reviewedBy = currentUser?.id;
     } else if (newStatus === 'approved') {
-      updatedCopy.approvedAt = now.toISOString();
+      updatedCopy.approvedAt = now;
       updatedCopy.approvedBy = currentUser?.id;
     }
     
@@ -273,10 +279,14 @@ export default function Home() {
       ];
     }
     
-    // Usar el servicio de datos para actualizar
-    dataService.updateCopy(copyId, updatedCopy);
+    try {
+      // Usar el servicio de datos para actualizar (versión asíncrona)
+      await dataService.updateCopy(copyId, updatedCopy);
+      console.log('✅ Estado actualizado exitosamente');
+    } catch (error) {
+      console.error('❌ Error al actualizar estado:', error);
+    }
     
-    console.log('✅ Estado actualizado exitosamente');
     console.groupEnd();
   }, [currentUser?.id, copys]);
   
@@ -293,8 +303,11 @@ export default function Home() {
         title: "Acción no permitida",
         description: "Debe iniciar sesión para crear o editar copys",
         status: "warning",
-        duration: 3000,
+        duration: 2000,
         isClosable: true,
+        position: "bottom-right",
+        variant: "subtle",
+        size: "sm"
       });
       return;
     }
@@ -318,17 +331,19 @@ export default function Home() {
         const updatedCopy: Copy = {
           ...editingCopy,
           ...data,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
           history: [
             ...(editingCopy.history || []),
             {
               id: generateUniqueId(),
+              copyId: editingCopy.id,
+              userId: currentUser?.id || 'anonymous',
+              userName: currentUser?.username || 'Sistema',
               previousText: editingCopy.text,
               newText: data.text,
-              changedBy: currentUser?.username || 'Sistema',
-              changedAt: new Date().toISOString(),
-              reason: 'Actualización manual'
-            }
+              createdAt: new Date(),
+              comments: 'Actualización manual'
+            } as CopyHistory
           ]
         };
         
@@ -341,8 +356,10 @@ export default function Home() {
             title: "Copy actualizado",
             description: `El copy "${data.slug}" ha sido actualizado correctamente`,
             status: "success",
-            duration: 3000,
+            duration: 2000,
             isClosable: true,
+            position: "bottom-right",
+            variant: "subtle"
           });
         }
         
@@ -364,8 +381,10 @@ export default function Home() {
               title: "Copy duplicado",
               description: `Ya existe un copy con el slug "${data.slug}" para el idioma ${data.language}`,
               status: "error",
-              duration: 3000,
+              duration: 2000,
               isClosable: true,
+              position: "bottom-right",
+              variant: "subtle"
             });
             return;
           }
@@ -376,13 +395,30 @@ export default function Home() {
           id: generateUniqueId(),
           ...data,
           status: 'not_assigned' as CopyStatus,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
           history: []
         };
         
+        // Agregar una entrada al historial si no es una importación masiva
+        if (!isImport && !(data as any).isBulkImport) {
+          // Añadir entrada de historial para la creación
+          const historyEntry: CopyHistory = {
+            id: generateUniqueId(),
+            copyId: newCopy.id,
+            userId: currentUser?.id || 'anonymous',
+            userName: currentUser?.username || 'Anónimo',
+            previousText: '',
+            newText: data.text,
+            createdAt: new Date(),
+            comments: 'Creación inicial'
+          };
+          newCopy.history = [historyEntry];
+        }
+        
         // Usar el servicio de datos para agregar
         dataService.addCopy(newCopy);
+        console.log('📝 Copy enviado al DataService:', newCopy.slug, newCopy.id);
         
         // Mostrar notificación solo si no es importación masiva
         if (!isImport && !(data as any).isBulkImport) {
@@ -390,8 +426,10 @@ export default function Home() {
             title: "Copy creado",
             description: `El copy "${data.slug}" ha sido creado correctamente`,
             status: "success",
-            duration: 3000,
+            duration: 2000,
             isClosable: true,
+            position: "bottom-right",
+            variant: "subtle"
           });
         }
       }
@@ -402,12 +440,15 @@ export default function Home() {
       
       // Mostrar error solo si no es importación masiva
       if (!isImport && !(data as any).isBulkImport) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
         toast({
           title: "Error al guardar",
-          description: "No se pudo guardar el copy. Por favor, intente nuevamente.",
+          description: `No se pudo sincronizar el copy con el servidor: ${errorMessage}`,
           status: "error",
-          duration: 3000,
+          duration: 2000,
           isClosable: true,
+          position: "bottom-right",
+          variant: "subtle"
         });
       }
     } finally {
@@ -583,8 +624,11 @@ export default function Home() {
         title: "Acción no permitida",
         description: "Debe iniciar sesión para eliminar copys",
         status: "warning",
-        duration: 3000,
+        duration: 2000,
         isClosable: true,
+        position: "bottom-right",
+        variant: "subtle",
+        size: "sm"
       });
       return;
     }
@@ -612,8 +656,11 @@ export default function Home() {
         title: "Acción no permitida",
         description: "Debe iniciar sesión para editar copys",
         status: "warning",
-        duration: 3000,
+        duration: 2000,
         isClosable: true,
+        position: "bottom-right",
+        variant: "subtle",
+        size: "sm"
       });
       return;
     }
@@ -661,8 +708,11 @@ export default function Home() {
                         title: "Acción no permitida",
                         description: "Debe iniciar sesión para crear copys",
                         status: "warning",
-                        duration: 3000,
+                        duration: 2000,
                         isClosable: true,
+                        position: "bottom-right",
+                        variant: "subtle",
+                        size: "sm"
                       });
                       return;
                     }
@@ -695,8 +745,11 @@ export default function Home() {
                         title: "Acción no permitida",
                         description: "Debe iniciar sesión para importar copys",
                         status: "warning",
-                        duration: 3000,
+                        duration: 2000,
                         isClosable: true,
+                        position: "bottom-right",
+                        variant: "subtle",
+                        size: "sm"
                       });
                       return;
                     }
@@ -938,22 +991,36 @@ export default function Home() {
                         colorScheme="red"
                         variant="solid"
                         size="md"
-                        onClick={() => {
+                        onClick={async () => {
                           // Mostrar confirmación
                           if (confirm(`¿Estás seguro de que deseas eliminar ${selectedCopys.length} elementos?`)) {
-                            // Eliminar elementos seleccionados
-                            selectedCopys.forEach(id => {
-                              dataService.deleteCopy(id);
-                            });
-                            
-                            // Mostrar notificación
-                            toast({
-                              title: "Elementos eliminados",
-                              description: `Se han eliminado ${selectedCopys.length} elementos`,
-                              status: "success",
-                              duration: 3000,
-                              isClosable: true,
-                            });
+                            try {
+                              // Eliminar elementos seleccionados (versión asíncrona)
+                              for (const id of selectedCopys) {
+                                await dataService.deleteCopy(id);
+                              }
+                              
+                              // Mostrar notificación
+                              toast({
+                                title: "Elementos eliminados",
+                                description: `Se han eliminado ${selectedCopys.length} elementos`,
+                                status: "success",
+                                duration: 3000,
+                                isClosable: true,
+                              });
+                              
+                              // Log para debugging
+                              console.log(`🗑️ ${selectedCopys.length} elementos eliminados`);
+                            } catch (error) {
+                              console.error('❌ Error al eliminar elementos en lote:', error);
+                              toast({
+                                title: "Error",
+                                description: "Hubo un problema al eliminar los elementos",
+                                status: "error",
+                                duration: 3000,
+                                isClosable: true,
+                              });
+                            }
                             
                             // Limpiar selección
                             handleClearSelection();
@@ -1029,22 +1096,33 @@ export default function Home() {
                 </Button>
                 <Button 
                   colorScheme="red" 
-                  onClick={() => {
+                  onClick={async () => {
                     if (copyToDelete) {
-                      // Usar el servicio de datos para eliminar
-                      dataService.deleteCopy(copyToDelete.id);
-                      
-                      // Mostrar notificación
-                      toast({
-                        title: "Copy eliminado",
-                        description: "El copy ha sido eliminado correctamente",
-                        status: "success",
-                        duration: 3000,
-                        isClosable: true,
-                      });
-                      
-                      // Log para debugging
-                      console.log('🗑️ Copy eliminado:', copyToDelete.id);
+                      try {
+                        // Usar el servicio de datos para eliminar (versión asíncrona)
+                        await dataService.deleteCopy(copyToDelete.id);
+                        
+                        // Mostrar notificación
+                        toast({
+                          title: "Copy eliminado",
+                          description: "El copy ha sido eliminado correctamente",
+                          status: "success",
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                        
+                        // Log para debugging
+                        console.log('🗑️ Copy eliminado:', copyToDelete.id);
+                      } catch (error) {
+                        console.error('❌ Error al eliminar copy:', error);
+                        toast({
+                          title: "Error",
+                          description: "Hubo un problema al eliminar el copy",
+                          status: "error",
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                      }
                       
                       // Limpiar el estado
                       setCopyToDelete(null);

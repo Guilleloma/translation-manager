@@ -31,7 +31,6 @@
 - `npm run dev:mongodb` - ✅ **Recomendado**: Verifica MongoDB y luego inicia la aplicación
 - `npm run dev` - ❌ **No usar**: Solo inicia Next.js sin verificar MongoDB
 - `npm run mongodb:check` - Verifica solo el estado de MongoDB
-- `npm run mongodb:migrate` - Ejecuta migración de datos
 
 ## Configuración inicial
 
@@ -46,70 +45,14 @@
    MONGODB_URI=mongodb://localhost:27017/translation-manager
    ```
 
-## Pasos para probar la migración de datos
+## Notas importantes
 
-### 1. Limpieza de la base de datos (opcional)
-
-Si quieres empezar desde cero:
-
-```bash
-# Ejecuta este script para limpiar la base de datos
-node -e "require('./dist/services/seedMigration').clearAllMongoDBData().then(() => console.log('Base de datos limpiada')).catch(console.error)"
-```
-
-### 2. Migración de datos semilla
-
-```bash
-# Ejecuta este script para migrar los datos semilla a MongoDB
-node -e "require('./dist/services/seedMigration').migrateAllSeedDataToMongoDB().then(() => console.log('Migración completada')).catch(console.error)"
-```
-
-### 3. Verificación del estado de la migración
-
-```bash
-# Verifica el estado de la migración
-node -e "require('./dist/services/seedMigration').checkMigrationStatus().then(console.log).catch(console.error)"
-```
-
-### 4. Verificación manual en MongoDB
-
-Puedes verificar manualmente los datos en MongoDB:
-
-```bash
-# Conectar a MongoDB
-mongo
-
-# Seleccionar la base de datos
-use translation-manager
-
-# Verificar colecciones
-show collections
-
-# Contar documentos en cada colección
-db.users.countDocuments()
-db.copys.countDocuments()
-
-# Ver algunos documentos
-db.users.find().limit(3)
-db.copys.find().limit(3)
-```
-
-## Notas importantes sobre la migración
-
-- La migración actual omite los campos `comments` e `history` para evitar problemas de validación con los IDs.
-- Los slugs vacíos están permitidos en el modelo `Copy`.
-- Se ha implementado un índice parcial para que la restricción de unicidad solo aplique a slugs no vacíos.
+- Los datos se persisten automáticamente en MongoDB
+- Ya no es necesario migrar datos desde localStorage
+- Los usuarios y copys se crean directamente en la base de datos
+- La aplicación se conecta automáticamente a MongoDB al iniciar
 
 ## Solución de problemas
-
-### Error de validación de ObjectId
-
-Si encuentras errores como:
-```
-ValidationError: Copy validation failed: comments.0.copyId: Cast to ObjectId failed for value "03533f65-a88f-4c9b-8e1a-a445d0e60689" (type string) at path "copyId"
-```
-
-Esto indica que hay un problema con la conversión de IDs de string a ObjectId. La solución implementada omite estos campos durante la migración inicial.
 
 ### Error de conexión a MongoDB
 
@@ -122,4 +65,4 @@ Verifica que MongoDB esté en ejecución y accesible en el puerto configurado.
 
 ## Próximos pasos
 
-Una vez que la migración básica funcione correctamente, se puede implementar una segunda fase para migrar los comentarios e historial, convirtiendo adecuadamente los IDs a ObjectId.
+La aplicación ahora utiliza MongoDB como base de datos principal. Los datos se crean directamente en MongoDB conforme se van añadiendo a través de la interfaz.
