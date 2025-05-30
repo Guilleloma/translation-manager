@@ -157,6 +157,16 @@ const CopySchema: Schema = new Schema({
   metadata: {
     type: Schema.Types.Mixed,
     default: {}
+  },
+  // Campos para gestión de grupos de traducción
+  translationGroupId: {
+    type: String,
+    index: true // ID que agrupa traducciones del mismo concepto
+  },
+  isOriginalText: {
+    type: Boolean,
+    default: false,
+    index: true // Si es el texto original
   }
 }, {
   timestamps: true, // Agrega createdAt y updatedAt automáticamente

@@ -91,93 +91,130 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 ===== API POST /api/copys - INICIO =====');
+  
   try {
     await connectDB();
-    
+    console.log('✅ Conexión a MongoDB establecida');
+
     const body = await request.json();
-    const { slug, text, language, status, tags, isBulkImport } = body;
-    
-    // Validaciones básicas
-    if (!text || !language) {
+    console.log('📥 DATOS RECIBIDOS EN API:', {
+      text: body.text?.substring(0, 50) + '...',
+      slug: body.slug,
+      language: body.language,
+      needsSlugReview: body.needsSlugReview,
+      translationGroupId: body.translationGroupId,
+      isOriginalText: body.isOriginalText,
+      allKeys: Object.keys(body)
+    });
+
+    // Validar que los campos requeridos estén presentes
+    if (!body.text || !body.slug || !body.language) {
+      console.error('❌ Faltan campos requeridos:', {
+        hasText: !!body.text,
+        hasSlug: !!body.slug,
+        hasLanguage: !!body.language
+      });
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Campos requeridos: text, language' 
-        },
+        { success: false, error: 'Los campos text, slug y language son requeridos' },
         { status: 400 }
       );
     }
+
+    // Verificar que no exista un copy con el mismo slug
+    console.log('🔍 Verificando duplicados de slug...');
+    const existingCopy = await Copy.findOne({ slug: body.slug });
     
-    // Verificar unicidad de slug+idioma si se proporciona slug
-    if (slug) {
-      const existingCopy = await Copy.findOne({ slug, language });
-      if (existingCopy) {
+    if (existingCopy) {
+      console.log('⚠️ SLUG DUPLICADO ENCONTRADO:', {
+        existingId: existingCopy._id,
+        existingSlug: existingCopy.slug,
+        existingLanguage: existingCopy.language,
+        existingGroupId: existingCopy.translationGroupId,
+        newLanguage: body.language,
+        newGroupId: body.translationGroupId
+      });
+      
+      // Si pertenecen al mismo grupo de traducción, permitir el duplicado
+      if (existingCopy.translationGroupId && body.translationGroupId && 
+          existingCopy.translationGroupId === body.translationGroupId) {
+        console.log('✅ Mismo grupo de traducción, permitiendo slug duplicado');
+      } else {
+        console.error('❌ Slug duplicado en diferente grupo o sin grupo');
         return NextResponse.json(
-          { 
-            success: false, 
-            error: `Ya existe un copy con el slug "${slug}" para el idioma "${language}"` 
-          },
-          { status: 409 }
+          { success: false, error: `Ya existe un copy con el slug "${body.slug}"` },
+          { status: 400 }
         );
       }
+    } else {
+      console.log('✅ Slug disponible para uso');
     }
-    
-    // Por defecto, todos los copys nuevos necesitan revisión de slug
-    // Solo se marcarán como no necesitados de revisión cuando un desarrollador los revise explícitamente
-    
-    // Crear nuevo copy
+
+    // Crear el nuevo copy
+    console.log('💾 CREANDO COPY EN BASE DE DATOS...');
     const newCopy = new Copy({
-      slug: slug || '',
-      text,
-      language,
-      status: status || 'not_assigned',
-      tags: tags || [],
-      isBulkImport: isBulkImport || false,
-      needsSlugReview: true // Todos los nuevos copys necesitan revisión
+      text: body.text,
+      slug: body.slug,
+      language: body.language,
+      status: body.status || 'not_assigned',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      history: body.history || [],
+      needsSlugReview: body.needsSlugReview !== undefined ? body.needsSlugReview : true,
+      translationGroupId: body.translationGroupId,
+      isOriginalText: body.isOriginalText !== undefined ? body.isOriginalText : true
     });
-    
+
+    console.log('💾 COPY A GUARDAR:', {
+      slug: newCopy.slug,
+      language: newCopy.language,
+      needsSlugReview: newCopy.needsSlugReview,
+      translationGroupId: newCopy.translationGroupId,
+      isOriginalText: newCopy.isOriginalText,
+      text: newCopy.text.substring(0, 30) + '...'
+    });
+
     const savedCopy = await newCopy.save();
-    
-    console.log(`✅ API: Copy creado - ${savedCopy.slug || 'sin slug'} (${savedCopy.language})`);
-    
+    console.log('✅ COPY GUARDADO EN BD:', {
+      id: savedCopy._id,
+      slug: savedCopy.slug,
+      language: savedCopy.language,
+      needsSlugReview: savedCopy.needsSlugReview,
+      translationGroupId: savedCopy.translationGroupId,
+      isOriginalText: savedCopy.isOriginalText
+    });
+
+    console.log('🚀 ===== API POST /api/copys - FIN EXITOSO =====');
     return NextResponse.json({
       success: true,
-      data: savedCopy,
+      copy: savedCopy,
       message: 'Copy creado exitosamente'
-    }, { status: 201 });
+    });
+  } catch (error: any) {
+    console.error('❌ ===== API POST /api/copys - ERROR =====');
+    console.error('Error creating copy:', error);
     
-  } catch (error) {
-    console.error('❌ Error creando copy:', error);
-    
-    // Manejar errores de validación de Mongoose
-    if (error instanceof Error && error.name === 'ValidationError') {
+    // Manejar errores de validación de MongoDB
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      console.error('❌ Errores de validación:', validationErrors);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Error de validación',
-          details: error.message
-        },
+        { success: false, error: `Errores de validación: ${validationErrors.join(', ')}` },
         { status: 400 }
       );
     }
     
-    // Manejar errores de duplicado
-    if (error instanceof Error && 'code' in error && (error as any).code === 11000) {
+    // Manejar errores de duplicado de MongoDB
+    if (error.code === 11000) {
+      console.error('❌ Error de duplicado MongoDB:', error.keyValue);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Ya existe un copy con este slug e idioma'
-        },
-        { status: 409 }
+        { success: false, error: 'Ya existe un copy con esos datos únicos' },
+        { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Error interno del servidor',
-        details: error instanceof Error ? error.message : 'Error desconocido'
-      },
+      { success: false, error: 'Error interno del servidor' },
       { status: 500 }
     );
   }

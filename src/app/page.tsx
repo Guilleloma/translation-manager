@@ -142,21 +142,21 @@ export default function Home() {
 
   // Función para refrescar la lista de copys (puede ser llamada desde cualquier parte)
   const refreshCopysList = async () => {
-    console.log('🔄 Refrescando la lista de copys...');
+    console.log('🔄 Refrescando lista de copys...');
+    
     try {
       const storedCopys = await dataService.getCopys();
+      console.log(`📊 Copys obtenidos: ${storedCopys.length} total`);
+      
       setCopys(storedCopys);
-      console.log(`✅ Copys actualizados: ${storedCopys.length}`);
-      // Incrementar el trigger para forzar rerender
       setUpdateTrigger(prev => prev + 1);
       
-      // Emitir un evento personalizado para notificar a otras partes de la aplicación
-      // que la lista de copys ha sido actualizada
+      // Emitir evento para notificar a otras páginas
       if (typeof window !== 'undefined') {
-        console.log('📣 Emitiendo evento copysUpdated para notificar a otras páginas');
         window.dispatchEvent(new Event('copysUpdated'));
       }
       
+      console.log('✅ Lista de copys actualizada exitosamente');
       return storedCopys;
     } catch (error) {
       console.error('❌ Error al refrescar copys:', error);
@@ -302,13 +302,18 @@ export default function Home() {
   
   // Manejar la creación o actualización de copys
   const handleSave = async (data: Omit<Copy, 'id' | 'status'>, isImport = false) => {
-    console.group('💾 Guardando copy');
-    console.log('Datos recibidos:', data);
-    console.log('Es importación masiva:', (data as any).isBulkImport ? 'SÍ' : 'NO');
+    console.log('🚀 ===== INICIO PROCESO CREACIÓN COPY =====');
+    console.log('📥 DATOS RECIBIDOS:', {
+      text: data.text.substring(0, 50) + '...',
+      slug: data.slug,
+      language: data.language,
+      isImport,
+      allDataKeys: Object.keys(data)
+    });
     
     // Verificar si el usuario está autenticado
     if (!isAuthenticated && !isImport) {
-      console.log('Intento de guardar sin autenticación');
+      console.log('❌ Usuario no autenticado');
       toast({
         title: "Acción no permitida",
         description: "Debe iniciar sesión para crear o editar copys",
@@ -335,7 +340,13 @@ export default function Home() {
     try {
       // Verificar si es una edición (actualización) o un nuevo copy
       if (editingCopy && editingCopy.id) {
-        console.log('Actualizando copy existente:', editingCopy.id);
+        console.log('🔄 MODO EDICIÓN - Actualizando copy existente:', {
+          editingCopyId: editingCopy.id,
+          oldSlug: editingCopy.slug,
+          newSlug: data.slug,
+          oldText: editingCopy.text.substring(0, 30) + '...',
+          newText: data.text.substring(0, 30) + '...'
+        });
         
         // Crear el copy actualizado
         const updatedCopy: Copy = {
@@ -378,63 +389,126 @@ export default function Home() {
         }
       } else {
         // Crear nuevo copy
-        console.log('Creando nuevo copy con slug:', data.slug);
+        console.log('🆕 Creando nuevo copy:', { slug: data.slug, language: data.language });
         
-        // Asegurarse de que needsSlugReview se establece a true para que aparezca en tareas del developer
+        // NUEVA ESTRATEGIA: Sistema de grupos de traducción para mantener un único slug
+        // Buscar todas las traducciones existentes en el sistema, incluyendo aquellas que 
+        // ya han sido actualizadas por el desarrollador
+        
+        // Paso 1: Buscar si este texto ya tiene otras traducciones (mismo texto o slug)
+        const directTranslations = copys.filter(existingCopy => {
+          return existingCopy.language !== data.language && 
+                 (existingCopy.text === data.text || existingCopy.slug === data.slug);
+        });
+        
+        console.log(`🔍 Traducciones encontradas: ${directTranslations.length}`);
+        
+        // Paso 2: Buscar también por translationGroupId si alguna tiene
+        const relatedTranslations = copys.filter(existingCopy => {
+          return existingCopy.translationGroupId && 
+                 directTranslations.some(dt => dt.translationGroupId === existingCopy.translationGroupId);
+        });
+        
+        console.log(`🔗 Traducciones relacionadas: ${relatedTranslations.length}`);
+        
+        // Combinar todas las traducciones relacionadas sin duplicados
+        const allRelatedTranslations = [...new Set([...directTranslations, ...relatedTranslations])];
+        
+        console.log(`🔍 Total traducciones relacionadas: ${allRelatedTranslations.length}`);
+        
+        // Variables para construir el copy
+        let finalSlug = data.slug;
+        let needsReview = true;
+        let translationGroupId = generateUniqueId(); // Generar un nuevo ID de grupo por defecto
+        let isOriginalText = true; // Por defecto, será el texto original si no hay traducciones previas
+        
+        if (allRelatedTranslations.length > 0) {
+          // Ordenar por updatedAt para conseguir la versión más reciente primero
+          allRelatedTranslations.sort((a, b) => 
+            new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+          
+          const latestTranslation = allRelatedTranslations[0];
+          
+          console.log('📋 Traducción más reciente:', {
+            id: latestTranslation.id,
+            language: latestTranslation.language,
+            slug: latestTranslation.slug,
+            translationGroupId: latestTranslation.translationGroupId,
+            needsSlugReview: latestTranslation.needsSlugReview,
+            updatedAt: latestTranslation.updatedAt
+          });
+          
+          finalSlug = latestTranslation.slug; // Usar el slug más reciente
+          translationGroupId = latestTranslation.translationGroupId || translationGroupId;
+          needsReview = false; // No necesita revisión si forma parte de un grupo existente
+          isOriginalText = false; // No es el texto original si ya existen traducciones
+          
+          console.log(`🔑 Usando grupo existente: "${translationGroupId}"`);
+          console.log(`🔧 Usando slug más reciente: "${finalSlug}" de la traducción en ${latestTranslation.language}`);
+          
+          // Verificar si el slug ya ha sido revisado (por un developer)
+          const hasBeenReviewed = !latestTranslation.needsSlugReview;
+          if (hasBeenReviewed) {
+            console.log(`✅ Este grupo ya fue revisado por un developer, no aparecerá en tareas pendientes`);
+          }
+        } else {
+          console.log(`🌟 Creando nuevo grupo de traducción: "${translationGroupId}"`);
+          console.log(`🔧 Es un texto nuevo, usando slug: "${finalSlug}" (necesita revisión)`);
+        }
+        
+        // Crear el nuevo copy con todos los datos de grupo
         const newCopy: Omit<Copy, 'id'> = {
           ...data,
+          slug: finalSlug, // Usar el slug más reciente del grupo
           status: 'not_assigned' as CopyStatus,
           createdAt: new Date(),
           updatedAt: new Date(),
           history: [],
-          needsSlugReview: true, // IMPORTANTE: Marcar que necesita revisión de slug
+          needsSlugReview: needsReview,
+          translationGroupId, // Añadir el ID de grupo
+          isOriginalText // Marcar si es texto original
         };
         
-        // Si no es una importación masiva, añadir una entrada al historial
-        if (!isImport && !(data as any).isBulkImport) {
-          const historyEntry: CopyHistory = {
-            id: generateUniqueId(),
-            copyId: 'pending', // Se actualizará después de crear el copy
-            userId: currentUser?.id || 'anonymous',
-            userName: currentUser?.username || 'Sistema',
-            previousText: '',
-            newText: data.text,
-            createdAt: new Date(),
-            comments: 'Creación inicial'
-          };
-          newCopy.history = [historyEntry];
-        }
+        console.log(`💾 COPY A CREAR:`, {
+          slug: finalSlug,
+          language: data.language,
+          groupId: translationGroupId,
+          needsReview: needsReview,
+          isOriginalText: isOriginalText,
+          text: data.text.substring(0, 30) + '...'
+        });
         
-        // Guardar el nuevo copy usando el servicio de datos
-        // Nota: Usamos addCopy que es la función correcta en dataService
-        await dataService.addCopy(newCopy as Copy); // Necesita cast a Copy completo
-        console.log('📝 Nuevo copy creado en el DataService');
+        // NOTA: El historial se creará automáticamente en el backend cuando se cree el copy
+        // No necesitamos crearlo aquí con copyId 'pending'
         
-        // Registrar que este copy necesita revisión de slug
-        console.log('🔧 Este copy necesita revisión de slug: needsSlugReview=true');
-        
-        // Actualizar explícitamente la lista después de crear un nuevo copy
-        await refreshCopysList();
-        
-        // Emitir un evento especial para notificar a la página de tareas del developer
-        if (typeof window !== 'undefined') {
-          console.log('📣 Emitiendo evento especial newCopyCreated para tareas de developer');
-          window.dispatchEvent(new CustomEvent('newCopyCreated', { 
-            detail: { copy: newCopy, needsSlugReview: true } 
-          }));
-        }
-        
-        // Mostrar notificación solo si no es importación masiva
-        if (!isImport && !(data as any).isBulkImport) {
-          toast({
-            title: "Copy creado",
-            description: `El copy "${data.slug}" ha sido creado correctamente`,
-            status: "success",
-            duration: 2000,
-            isClosable: true,
-            position: "bottom-right",
-            variant: "subtle"
-          });
+        // Enviar el copy a la API
+        console.log('📤 Enviando copy a API...');
+        const response = await fetch('/api/copys', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newCopy),
+        });
+
+        const result = await response.json();
+        console.log('📥 Respuesta API:', { success: result.success, copyId: result.copy?.id });
+
+        if (result.success) {
+          console.log('✅ Copy creado exitosamente:', result.copy.id);
+          
+          // Actualizar la lista de copys - CRÍTICO para que aparezca en la UI
+          console.log('🔄 Actualizando lista de copys...');
+          await refreshCopysList();
+          console.log('✅ Lista actualizada');
+          
+          // Limpiar el formulario solo si no es una importación masiva
+          if (!isImport && !(data as any).isBulkImport) {
+            // El formulario se limpia automáticamente en el componente CopyForm
+          }
+        } else {
+          console.error('❌ Error al crear copy:', result.error);
+          alert(`Error al crear copy: ${result.error}`);
         }
       }
       
@@ -460,7 +534,7 @@ export default function Home() {
       if (!isImport && !(data as any).isBulkImport) {
         setIsSaving(false);
       }
-      console.groupEnd();
+      console.log('🚀 ===== FIN PROCESO CREACIÓN COPY =====');
     }
   };
 
@@ -752,8 +826,7 @@ export default function Home() {
                         duration: 2000,
                         isClosable: true,
                         position: "bottom-right",
-                        variant: "subtle",
-                        size: "sm"
+                        variant: "subtle"
                       });
                       return;
                     }
