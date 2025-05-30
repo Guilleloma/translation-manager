@@ -77,11 +77,15 @@ export default function Header() {
                     </Link>
                   )}
                   
-                  {/* Show tasks link for translators and reviewers */}
-                  {(currentUser?.role === UserRole.TRANSLATOR || currentUser?.role === UserRole.REVIEWER) && (
-                    <Link as={NextLink} href="/translator-tasks" _hover={{ textDecoration: 'none' }}>
+                  {/* Show tasks link for translators, reviewers and developers */}
+                  {(currentUser?.role === UserRole.TRANSLATOR || currentUser?.role === UserRole.REVIEWER || currentUser?.role === UserRole.DEVELOPER) && (
+                    <Link as={NextLink} href={
+                      currentUser?.role === UserRole.DEVELOPER ? "/developer-tasks" : "/translator-tasks"
+                    } _hover={{ textDecoration: 'none' }}>
                       <Button variant="ghost">
-                        {currentUser?.role === UserRole.TRANSLATOR ? 'Mis Tareas' : 'Tareas Pendientes'}
+                        {currentUser?.role === UserRole.TRANSLATOR ? 'Mis Tareas' : 
+                         currentUser?.role === UserRole.REVIEWER ? 'Tareas Pendientes' :
+                         'Mis Tareas'}
                       </Button>
                     </Link>
                   )}

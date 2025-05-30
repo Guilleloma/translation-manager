@@ -140,27 +140,37 @@ export default function Home() {
   // Estado para el modal de confirmación de eliminación masiva
   const { isOpen: isBulkDeleteModalOpen, onOpen: onBulkDeleteModalOpen, onClose: onBulkDeleteModalClose } = useDisclosure();
 
+  // Función para refrescar la lista de copys (puede ser llamada desde cualquier parte)
+  const refreshCopysList = async () => {
+    console.log('🔄 Refrescando la lista de copys...');
+    try {
+      const storedCopys = await dataService.getCopys();
+      setCopys(storedCopys);
+      console.log(`✅ Copys actualizados: ${storedCopys.length}`);
+      // Incrementar el trigger para forzar rerender
+      setUpdateTrigger(prev => prev + 1);
+      
+      // Emitir un evento personalizado para notificar a otras partes de la aplicación
+      // que la lista de copys ha sido actualizada
+      if (typeof window !== 'undefined') {
+        console.log('📣 Emitiendo evento copysUpdated para notificar a otras páginas');
+        window.dispatchEvent(new Event('copysUpdated'));
+      }
+      
+      return storedCopys;
+    } catch (error) {
+      console.error('❌ Error al refrescar copys:', error);
+      return [];
+    }
+  };
+  
   // Cargar copys desde el servicio de datos cuando el componente se monta
   useEffect(() => {
     console.log('🔄 Cargando copys desde el servicio de datos...');
     setIsLoading(true);
     
-    const loadData = async () => {
-      try {
-        // Usar la versión asíncrona para cargar desde MongoDB
-        const storedCopys = await dataService.getCopys();
-        setCopys(storedCopys);
-        console.log(`✅ Copys cargados: ${storedCopys.length}`);
-      } catch (error) {
-        console.error('❌ Error al cargar copys:', error);
-        setCopys([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    // Ejecutar la función asíncrona
-    loadData();
+    // Refrescar la lista y actualizar estado de carga
+    refreshCopysList().finally(() => setIsLoading(false));
     
     // Suscribirse a cambios en los copys
     const unsubscribe = dataService.subscribe('copys', (newCopys) => {
@@ -348,7 +358,11 @@ export default function Home() {
         };
         
         // Usar el servicio de datos para actualizar
-        dataService.updateCopy(editingCopy.id, updatedCopy);
+        await dataService.updateCopy(editingCopy.id, updatedCopy);
+        console.log('📝 Copy actualizado en el DataService:', updatedCopy.id);
+        
+        // Actualizar explícitamente la lista después de actualizar un copy
+        await refreshCopysList();
         
         // Mostrar notificación solo si no es importación masiva
         if (!isImport && !(data as any).isBulkImport) {
@@ -362,52 +376,27 @@ export default function Home() {
             variant: "subtle"
           });
         }
-        
-        // Limpiar el estado de edición
-        setEditingCopy(null);
-        onEditClose();
       } else {
         // Crear nuevo copy
-        console.log('Creando nuevo copy');
+        console.log('Creando nuevo copy con slug:', data.slug);
         
-        // Verificar duplicados solo si no es importación masiva
-        if (!isImport && !(data as any).isBulkImport) {
-          const existingCopy = copys.find(c => 
-            c.slug === data.slug && c.language === data.language
-          );
-          
-          if (existingCopy) {
-            toast({
-              title: "Copy duplicado",
-              description: `Ya existe un copy con el slug "${data.slug}" para el idioma ${data.language}`,
-              status: "error",
-              duration: 2000,
-              isClosable: true,
-              position: "bottom-right",
-              variant: "subtle"
-            });
-            return;
-          }
-        }
-        
-        // Crear el nuevo copy
-        const newCopy: Copy = {
-          id: generateUniqueId(),
+        // Asegurarse de que needsSlugReview se establece a true para que aparezca en tareas del developer
+        const newCopy: Omit<Copy, 'id'> = {
           ...data,
           status: 'not_assigned' as CopyStatus,
           createdAt: new Date(),
           updatedAt: new Date(),
-          history: []
+          history: [],
+          needsSlugReview: true, // IMPORTANTE: Marcar que necesita revisión de slug
         };
         
-        // Agregar una entrada al historial si no es una importación masiva
+        // Si no es una importación masiva, añadir una entrada al historial
         if (!isImport && !(data as any).isBulkImport) {
-          // Añadir entrada de historial para la creación
           const historyEntry: CopyHistory = {
             id: generateUniqueId(),
-            copyId: newCopy.id,
+            copyId: 'pending', // Se actualizará después de crear el copy
             userId: currentUser?.id || 'anonymous',
-            userName: currentUser?.username || 'Anónimo',
+            userName: currentUser?.username || 'Sistema',
             previousText: '',
             newText: data.text,
             createdAt: new Date(),
@@ -416,9 +405,24 @@ export default function Home() {
           newCopy.history = [historyEntry];
         }
         
-        // Usar el servicio de datos para agregar
-        dataService.addCopy(newCopy);
-        console.log('📝 Copy enviado al DataService:', newCopy.slug, newCopy.id);
+        // Guardar el nuevo copy usando el servicio de datos
+        // Nota: Usamos addCopy que es la función correcta en dataService
+        await dataService.addCopy(newCopy as Copy); // Necesita cast a Copy completo
+        console.log('📝 Nuevo copy creado en el DataService');
+        
+        // Registrar que este copy necesita revisión de slug
+        console.log('🔧 Este copy necesita revisión de slug: needsSlugReview=true');
+        
+        // Actualizar explícitamente la lista después de crear un nuevo copy
+        await refreshCopysList();
+        
+        // Emitir un evento especial para notificar a la página de tareas del developer
+        if (typeof window !== 'undefined') {
+          console.log('📣 Emitiendo evento especial newCopyCreated para tareas de developer');
+          window.dispatchEvent(new CustomEvent('newCopyCreated', { 
+            detail: { copy: newCopy, needsSlugReview: true } 
+          }));
+        }
         
         // Mostrar notificación solo si no es importación masiva
         if (!isImport && !(data as any).isBulkImport) {

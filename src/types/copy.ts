@@ -79,4 +79,6 @@ export interface Copy extends Omit<CopyInput, 'slug' | 'text'> {
   tags?: CopyTag[];    // Etiquetas asociadas a la traducción
   comments?: CopyComment[]; // Comentarios sobre la traducción
   history?: CopyHistory[]; // Historial de cambios
+  needsSlugReview?: boolean; // Indica si el slug necesita revisión por parte de un desarrollador
+  metadata?: Record<string, any>; // Metadatos adicionales para cualquier información extra
 }

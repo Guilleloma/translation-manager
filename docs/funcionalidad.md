@@ -42,6 +42,13 @@
 - Filtra copys "traducidos" y los revisa.
 - Deja feedback, aprueba o rechaza.
 
+**Developer:**
+- Accede al panel "Mis Tareas" para gestionar slugs auto-generados.
+- Identifica textos que necesitan slugs más descriptivos.
+- Actualiza slugs para mejorar la organización y búsqueda de traducciones.
+- Visualiza estadísticas de textos pendientes de revisión por idioma.
+- Filtra tareas por idioma y texto para facilitar la gestión.
+
 ---
 
 ## Modelo de datos

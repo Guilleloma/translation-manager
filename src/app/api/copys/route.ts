@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search');
+    const needsSlugReview = searchParams.get('needsSlugReview');
     
     let query: any = {};
     
@@ -29,6 +30,14 @@ export async function GET(request: NextRequest) {
     if (status) query.status = status;
     if (slug) query.slug = slug;
     if (assignedTo) query.assignedTo = assignedTo;
+    
+    // Filtrar por slugs que necesitan revisión
+    if (needsSlugReview === 'true') {
+      query.needsSlugReview = true;
+      console.log('🔧 Filtrando copys que necesitan revisión de slug');
+    } else if (needsSlugReview === 'false') {
+      query.needsSlugReview = false;
+    }
     
     // Búsqueda de texto
     if (search) {
@@ -113,6 +122,9 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Por defecto, todos los copys nuevos necesitan revisión de slug
+    // Solo se marcarán como no necesitados de revisión cuando un desarrollador los revise explícitamente
+    
     // Crear nuevo copy
     const newCopy = new Copy({
       slug: slug || '',
@@ -120,7 +132,8 @@ export async function POST(request: NextRequest) {
       language,
       status: status || 'not_assigned',
       tags: tags || [],
-      isBulkImport: isBulkImport || false
+      isBulkImport: isBulkImport || false,
+      needsSlugReview: true // Todos los nuevos copys necesitan revisión
     });
     
     const savedCopy = await newCopy.save();
