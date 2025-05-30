@@ -63,8 +63,10 @@ export interface CopyHistory {
 
 export interface Copy extends Omit<CopyInput, 'slug' | 'text'> {
   id: string;
+  _id?: string; // MongoDB ID
   slug: string;
   text: string;
+  language: string;
   status: CopyStatus;
   createdAt?: Date;
   updatedAt?: Date;
@@ -81,4 +83,6 @@ export interface Copy extends Omit<CopyInput, 'slug' | 'text'> {
   history?: CopyHistory[]; // Historial de cambios
   needsSlugReview?: boolean; // Indica si el slug necesita revisión por parte de un desarrollador
   metadata?: Record<string, any>; // Metadatos adicionales para cualquier información extra
+  translationGroupId?: string; // ID que agrupa todas las traducciones del mismo concepto
+  isOriginalText?: boolean; // Indica si es el texto original/fuente
 }
