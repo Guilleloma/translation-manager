@@ -182,6 +182,38 @@ export default function Home() {
     return unsubscribe;
   }, []);
   
+  // Efecto separado para escuchar eventos de actualización de slugs
+  useEffect(() => {
+    // Escuchar el evento slugsUpdated para actualizar la interfaz cuando se cambian slugs
+    // desde la página de tareas del developer
+    const handleSlugUpdates = (event: CustomEvent) => {
+      console.log('📢 Evento slugsUpdated recibido en la página principal:', event.detail);
+      
+      // Actualizar inmediatamente la lista de copys
+      refreshCopysList().then(updatedCopys => {
+        console.log(`✅ Lista de copys actualizada tras cambio de slug: ${updatedCopys.length} copys`); 
+        
+        // Mostrar notificación sobre la actualización
+        toast({
+          title: "Slugs actualizados",
+          description: `Los slugs han sido actualizados en todos los idiomas`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+          position: "bottom-right"
+        });
+      });
+    };
+    
+    // Registrar el event listener
+    window.addEventListener('slugsUpdated', handleSlugUpdates as EventListener);
+    
+    // Limpiar el event listener al desmontar
+    return () => {
+      window.removeEventListener('slugsUpdated', handleSlugUpdates as EventListener);
+    };
+  }, []);  // Mantenemos un array de dependencias vacío
+  
   // DEBUG: Mostrar estado cuando cambia
   useEffect(() => {
     console.group('🔍 DEPURACIÓN: ESTADO ACTUAL DE COPYS');
