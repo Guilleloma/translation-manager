@@ -154,16 +154,7 @@ export const CopyForm: React.FC<CopyFormProps> = ({
       // Llamar a la función de guardado proporcionada por el padre
       onSave(copyData);
       
-      // Mostrar notificación de éxito
-      toast({
-        title: isEditing ? "Copy actualizado" : "Copy guardado",
-        description: isEditing 
-          ? `El copy "${copyData.slug}" ha sido actualizado correctamente.` 
-          : `El copy "${copyData.slug}" ha sido creado correctamente.`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
+      // El toast se mostrará desde el componente padre para evitar duplicados
       
       // Resetear el formulario si no estamos en modo edición
       if (!isEditing) {
@@ -172,13 +163,7 @@ export const CopyForm: React.FC<CopyFormProps> = ({
       }
     } catch (error) {
       console.error('Error al guardar el copy:', error);
-      toast({
-        title: "Error",
-        description: "Ha ocurrido un error al guardar el copy. Inténtalo de nuevo.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      // El toast de error se mostrará desde el componente padre para evitar duplicados
     } finally {
       // Desactivar indicador de carga
       setIsSubmitting(false);
