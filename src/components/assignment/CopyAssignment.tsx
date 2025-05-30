@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Box,
   Heading,
@@ -54,6 +54,9 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
   const [selectedTranslator, setSelectedTranslator] = useState('');
   const [selectedCopys, setSelectedCopys] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const toastIdRef = useRef<string | number>();
 
   // Color de fondo para la tabla
   const tableBgColor = useColorModeValue('white', 'gray.800');
@@ -119,43 +122,112 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
     }
   };
 
-  // Asignar copys seleccionados al traductor
-  const handleAssign = () => {
-    if (!selectedTranslator || selectedCopys.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Selecciona un traductor y al menos un copy para asignar',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
+  /**
+ * Asignar copys seleccionados al traductor
+ * Implementa un sistema de feedback visual durante el proceso de asignación
+ * y maneja mejor las notificaciones para evitar saturar la interfaz
+ */
+const handleAssign = async () => {
+  if (!selectedTranslator || selectedCopys.length === 0) {
+    toast({
+      title: 'Error',
+      description: 'Selecciona un traductor y al menos un copy para asignar',
+      status: 'error',
+      duration: 3000,
+      isClosable: true,
+    });
+    return;
+  }
 
-    // Obtener el usuario seleccionado
-    const translator = users.find(user => user.id === selectedTranslator);
-    
-    // Asignar cada copy seleccionado
-    for (const copyId of selectedCopys) {
+  // Obtener el usuario seleccionado
+  const translator = users.find(user => user.id === selectedTranslator);
+  const totalCopys = selectedCopys.length;
+  
+  // Activar estado de carga
+  setIsAssigning(true);
+  setProgress(0);
+  
+  // Crear toast de progreso
+  toastIdRef.current = toast({
+    title: 'Asignando copys',
+    description: `0/${totalCopys} copys asignados a ${translator?.username}`,
+    status: 'info',
+    duration: null,
+    isClosable: false,
+    position: 'bottom-right',
+  });
+  
+  // Asignar cada copy seleccionado con un pequeño retraso para permitir actualizaciones de UI
+  try {
+    for (let i = 0; i < selectedCopys.length; i++) {
+      const copyId = selectedCopys[i];
+      
+      // Actualizar el copy
       updateCopy(copyId, {
         assignedTo: selectedTranslator,
         assignedAt: new Date(),
         status: 'assigned'
       });
+      
+      // Actualizar progreso
+      const currentProgress = Math.round(((i + 1) / totalCopys) * 100);
+      setProgress(currentProgress);
+      
+      // Actualizar toast cada 10% o cada 50 copys para no saturar la UI
+      if (i % Math.max(Math.floor(totalCopys / 10), 1) === 0 || i === selectedCopys.length - 1) {
+        if (toastIdRef.current) {
+          toast.update(toastIdRef.current, {
+            description: `${i + 1}/${totalCopys} copys asignados a ${translator?.username} (${currentProgress}%)`,
+            progress: currentProgress / 100,
+          });
+        }
+      }
+      
+      // Si hay muchos copys, añadir un pequeño retraso cada cierto número para permitir actualizaciones de UI
+      if (totalCopys > 100 && i % 50 === 0 && i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
     }
-
+    
+    // Cerrar el toast de progreso
+    if (toastIdRef.current) {
+      toast.close(toastIdRef.current);
+    }
+    
     // Mostrar mensaje de éxito
     toast({
       title: 'Copys asignados',
-      description: `${selectedCopys.length} copys asignados a ${translator?.username}`,
+      description: `${totalCopys} copys asignados a ${translator?.username}`,
       status: 'success',
-      duration: 3000,
+      duration: 5000,
       isClosable: true,
+      position: 'bottom-right',
     });
-
+    
     // Resetear selecciones
     setSelectedCopys([]);
     setSelectAll(false);
+  } catch (error) {
+    console.error('Error al asignar copys:', error);
+    
+    // Cerrar el toast de progreso en caso de error
+    if (toastIdRef.current) {
+      toast.close(toastIdRef.current);
+    }
+    
+    // Mostrar mensaje de error
+    toast({
+      title: 'Error al asignar copys',
+      description: 'Ha ocurrido un error durante la asignación. Por favor, inténtalo de nuevo.',
+      status: 'error',
+      duration: 5000,
+      isClosable: true,
+    });
+  } finally {
+    // Desactivar estado de carga
+    setIsAssigning(false);
+    setProgress(0);
+  }
   };
 
   // Obtener nombre del idioma a partir del código
@@ -221,9 +293,11 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
               <Button
                 colorScheme="blue"
                 onClick={handleAssign}
-                isDisabled={!selectedTranslator || selectedCopys.length === 0}
+                isDisabled={!selectedTranslator || selectedCopys.length === 0 || isAssigning}
                 size="md"
                 minW="140px"
+                isLoading={isAssigning}
+                loadingText={`Asignando... ${progress}%`}
               >
                 Asignar {selectedCopys.length} copy{selectedCopys.length !== 1 ? 's' : ''}
               </Button>

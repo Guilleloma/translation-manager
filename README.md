@@ -14,6 +14,8 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - **Vista de tabla por idiomas**: Visualización clara de todos los copys organizados por slug e idioma.
 - **Creación y edición intuitiva**: Interfaz optimizada para trabajar eficientemente con traducciones.
 - **Detección de conflictos de slug**: Sistema de alerta visual (⚠️) que muestra posibles conflictos en la estructura JSON cuando un slug raíz ('button') colisiona con slugs anidados ('button.crear').
+- **Persistencia con MongoDB**: Almacenamiento de datos en MongoDB para mayor robustez y escalabilidad.
+- **Sistema de asignación mejorado**: Interfaz optimizada para asignar copys a traductores por idioma.
 
 ---
 
@@ -75,7 +77,7 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 ### Justificación de decisiones
 - **Next.js:** Permite desarrollo rápido, rutas API integradas y despliegue sencillo.
 - **Chakra UI:** Componentes accesibles y personalizables, ideal para prototipos.
-- **Sin BD compleja:** Para un prototipo, persistencia en JSON o memoria es suficiente y acelera el desarrollo.
+- **MongoDB:** Base de datos NoSQL para persistencia de datos que ofrece buen rendimiento y flexibilidad.
 - **Sin autenticación real:** Los roles se simulan en el frontend, priorizando la funcionalidad principal.
 
 ### Límites del prototipo
@@ -163,11 +165,16 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Exportación JSON para todos los idiomas
   - ✅ Importación masiva compatible con todos los idiomas
 
-### Sprint 9: Persistencia y versión Beta ⏳
-- ⏳ Implementación de base de datos MongoDB
-  - ⏳ Modelado de datos para copys/traducciones
-  - ⏳ API para CRUD de copys con persistencia
-  - ⏳ Migración de sistema en memoria a MongoDB
+### Sprint 9: Persistencia y versión Beta ✅
+- ✅ Implementación de base de datos MongoDB
+  - ✅ Modelado de datos para copys/traducciones
+  - ✅ API para CRUD de copys con persistencia
+  - ✅ Migración de sistema en memoria a MongoDB
+  - ✅ Corrección de problemas con selección de checkboxes
+  - ✅ Implementación de eliminación masiva
+  - ✅ Arquitectura híbrida cliente/servidor para persistencia
+  - ✅ API de sincronización para operaciones CRUD
+  - ✅ Manejo de errores y fallbacks para garantizar disponibilidad
 - ⏳ Despliegue de versión Beta
   - ⏳ Configuración de entorno de pruebas
   - ⏳ Documentación para usuarios beta
@@ -215,6 +222,13 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 
 ### Sprint 11.1: Seguridad y Mejoras de UX ✅
 - ✅ Restricción de operaciones para usuarios no autenticados. Solo se pueden ver los datos de la lista de copys y tabla, pero no se pueden editar, eliminar ni crear copys sin autenticación.
+
+### Sprint 11.2: Selección múltiple y operaciones en lote ✅
+- ✅ Implementación de selección múltiple mediante checkboxes
+  - ✅ Corrección de errores en la selección de checkboxes
+  - ✅ Barra de acciones contextual para elementos seleccionados
+  - ✅ Eliminación masiva de elementos seleccionados
+  - ✅ Feedback visual claro durante el proceso de selección
 
 - ✅ Confirmación doble para acciones irreversibles
   - ✅ Modal de confirmación para eliminación de copys
@@ -331,16 +345,33 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Validación por combinación slug+idioma
   - ✅ Logs detallados para debugging
 
+### Sprint 23: Optimización de tiempos de compilación y navegación 🔄
+- 🔄 Optimización de la configuración de Next.js
+  - 🔄 Configuración mejorada para reducir tiempos de compilación
+  - 🔄 Optimización de importaciones de paquetes grandes como Chakra UI
+  - 🔄 Activación de optimizeCss para mejorar rendimiento
+- 🔄 Scripts de optimización para desarrollo
+  - 🔄 Script `optimize-nextjs-cache.sh` para limpiar y optimizar caché
+  - 🔄 Nuevos comandos npm para desarrollo optimizado
+  - 🔄 Integración con verificación de MongoDB
+- 🔄 Mejora de tiempos de navegación entre páginas
+  - 🔄 Reducción de componentes innecesarios en renderizado inicial
+  - 🔄 Optimización de carga de datos
+
 
 
 ## Tecnologías
 
 - **Frontend:** Next.js (React) + TypeScript
-- **Backend:** Node.js (API REST para parsing, validaciones y proxy a OpenAI)
+- **Backend:** Node.js (API REST con Next.js)
+- **Base de datos:** MongoDB (persistencia de datos)
+  - Modelos Mongoose para copys y usuarios
+  - API de sincronización cliente/servidor
+  - Arquitectura híbrida con localStorage como caché
 - **Parsing Excel:** Librería `xlsx` o similar
 - **Validación:** Zod/Joi para esquemas y reglas de negocio
-- **UI:** Chakra UI, Material UI o similar
-- **Autenticación:** Google OAuth (opcional)
+- **UI:** Chakra UI para componentes y diseño
+- **Autenticación:** Simulación de roles (pendiente OAuth)
 - **CI/CD:** GitHub Actions (lint, test, build, deploy)
 - **Despliegue:** Vercel, Netlify o similar
 - **Testing:** Jest + React Testing Library
@@ -396,8 +427,21 @@ translation-manager/
 
 1. Clona el repositorio
 2. Instala dependencias: `npm install --legacy-peer-deps` (necesario por compatibilidad de testing con React 19)
-3. Arranca el entorno local: `npm run dev`
-4. Ejecuta validaciones: `npm run validate`
+3. Asegúrate de tener MongoDB instalado y ejecutándose:
+   ```bash
+   # Instalar MongoDB en macOS con Homebrew (si no lo tienes)
+   brew tap mongodb/brew
+   brew install mongodb-community
+   
+   # Iniciar MongoDB como servicio
+   brew services start mongodb-community
+   ```
+4. Arranca el entorno local con MongoDB: `npm run dev:mongodb`
+   - Este comando verifica que MongoDB esté ejecutándose antes de iniciar la aplicación
+   - Si solo quieres verificar el estado de MongoDB: `npm run mongodb:check`
+5. Ejecuta validaciones: `npm run validate`
+
+> **IMPORTANTE**: Siempre usa `npm run dev:mongodb` en lugar de `npm run dev` para asegurar que MongoDB esté funcionando correctamente.
 
 ---
 
