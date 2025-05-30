@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Box,
   Heading,
@@ -43,12 +43,10 @@ import { UserRole, User } from '../../types/user';
 import LanguageUserSelector from '../assignment/LanguageUserSelector';
 import CopyAssignment from '../assignment/CopyAssignment';
 import { Copy } from '../../types/copy';
-import { resetToSeedData } from '../../utils/seedData';
 import RoleSelector from './RoleSelector';
 import LanguageBadge from '../common/LanguageBadge';
 import { useCopys } from '../../hooks/useDataService';
 import dataService from '../../services/dataService';
-import { MongoDBMigration } from './MongoDBMigration';
 
 /**
  * AdminPanel Component
@@ -70,21 +68,67 @@ export default function AdminPanel() {
     setLastUpdate(new Date());
   }, [copys]);
   
-  // Función para actualizar un copy
+  // Referencia para controlar los toasts
+  const toastIdRef = useRef<string | number>();
+  const lastToastTime = useRef<number>(0);
+  const pendingUpdates = useRef<number>(0);
+  
+  /**
+   * Función para actualizar un copy
+   * Implementa un sistema de gestión de notificaciones para evitar saturar la interfaz
+   * cuando se actualizan muchos copys a la vez
+   */
   const updateCopy = (copyId: string, updates: Partial<Copy>) => {
-    console.log(` Actualizando copy ${copyId}:`, updates);
+    console.log(`Actualizando copy ${copyId}:`, updates);
     
     // Usar el servicio de datos
     dataService.updateCopy(copyId, updates);
     
-    // Mensaje de éxito
-    toast({
-      title: 'Copy actualizado',
-      description: 'Se ha actualizado la asignación del copy',
-      status: 'success',
-      duration: 3000,
+    // Incrementar contador de actualizaciones pendientes
+    pendingUpdates.current += 1;
+    
+    // Obtener tiempo actual
+    const now = Date.now();
+    
+    // Si hay un toast activo o ha pasado poco tiempo desde el último toast, no mostrar uno nuevo
+    if (toastIdRef.current || (now - lastToastTime.current < 500)) {
+      return;
+    }
+    
+    // Mostrar un toast que se actualizará con el número total de actualizaciones
+    toastIdRef.current = toast({
+      title: 'Actualizando copys',
+      description: `Se está actualizando la asignación de copys...`,
+      status: 'info',
+      duration: null,
       isClosable: true,
+      position: 'bottom-right',
     });
+    
+    // Configurar un timeout para cerrar el toast actual y mostrar el resumen
+    setTimeout(() => {
+      // Cerrar el toast de progreso
+      if (toastIdRef.current) {
+        toast.close(toastIdRef.current);
+      }
+      
+      // Mostrar el toast de resumen solo si hubo actualizaciones
+      if (pendingUpdates.current > 0) {
+        toast({
+          title: 'Copys actualizados',
+          description: `Se ha actualizado la asignación de ${pendingUpdates.current} copy${pendingUpdates.current !== 1 ? 's' : ''}`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+          position: 'bottom-right',
+        });
+      }
+      
+      // Resetear el estado
+      toastIdRef.current = undefined;
+      pendingUpdates.current = 0;
+      lastToastTime.current = Date.now();
+    }, 1000); // Esperar 1 segundo para acumular actualizaciones
   };
 
   // Sample users data - these would be loaded from an API in a real app
@@ -202,7 +246,6 @@ export default function AdminPanel() {
           <Tab>Asignación de Copys</Tab>
           <Tab>Usuarios</Tab>
           <Tab>Asignación de Idiomas</Tab>
-          <Tab>MongoDB</Tab>
         </TabList>
 
         <TabPanels>
@@ -328,11 +371,6 @@ export default function AdminPanel() {
           {/* Language Assignment Tab */}
           <TabPanel>
             <LanguageUserSelector />
-          </TabPanel>
-
-          {/* MongoDB Tab */}
-          <TabPanel>
-            <MongoDBMigration />
           </TabPanel>
         </TabPanels>
       </Tabs>

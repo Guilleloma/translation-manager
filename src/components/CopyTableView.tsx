@@ -121,7 +121,7 @@ const CopyRow = React.memo(({ group, onEdit, onDelete, onViewHistory, languages,
           );
         })}
       
-      <Td>
+      <Td position="sticky" right={0} bg="white" boxShadow="xs" zIndex={1}>
         <HStack spacing={1}>
           <Menu>
             <MenuButton
@@ -450,7 +450,23 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
 
   return (
     <>
-    <Box overflowX="auto">
+    <Box 
+      sx={{
+        overflowX: 'auto',
+        overflowY: 'auto',
+        '&::-webkit-scrollbar': {
+          width: '10px',
+          height: '10px',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: 'gray.300',
+          borderRadius: '10px',
+        },
+        '&::-webkit-scrollbar-track': {
+          backgroundColor: 'gray.100',
+        },
+      }}
+    >
       <VStack spacing={4} align="stretch" mb={4}>
         <Flex justify="space-between" align="center" mb={4}>
           <Text fontSize="lg" fontWeight="bold">
@@ -480,49 +496,70 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
         </HStack>
       </VStack>
       
-      <Table variant="simple" size="sm">
-        <Thead>
-          <Tr bg="gray.50">
-            <Th>Slug</Th>
-            {sortedLanguages
-              .filter(lang => showLanguages.includes(lang))
-              .map(lang => (
-                <Th key={lang}>
-                  {lang === 'es' ? 'Español' : 
-                   lang === 'en' ? 'Inglés' : 
-                   lang === 'pt' ? 'Portugués' :
-                   lang === 'fr' ? 'Francés' :
-                   lang === 'it' ? 'Italiano' :
-                   lang === 'de' ? 'Alemán' :
-                   lang}
-                </Th>
-              ))}
-            <Th width="100px">Acciones</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {groupedCopys.length === 0 ? (
-            <Tr>
-              <Td colSpan={showLanguages.length + 2} textAlign="center" py={4}>
-                No hay copys para mostrar
-              </Td>
+      <Box 
+        sx={{
+          borderRadius: 'md',
+          border: '1px solid',
+          borderColor: 'gray.200',
+          overflowX: 'auto',
+          overflowY: 'auto',
+          '&::-webkit-scrollbar': {
+            width: '10px',
+            height: '10px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'gray.300',
+            borderRadius: '10px',
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'gray.100',
+          },
+        }}
+      >
+        <Table variant="simple" size="sm">
+          <Thead>
+            <Tr bg="gray.100">
+              <Th>Slug</Th>
+              {sortedLanguages
+                .filter(lang => showLanguages.includes(lang))
+                .map(lang => (
+                  <Th key={lang}>
+                    {lang === 'es' ? 'Español' : 
+                     lang === 'en' ? 'Inglés' : 
+                     lang === 'pt' ? 'Portugués' :
+                     lang === 'fr' ? 'Francés' :
+                     lang === 'it' ? 'Italiano' :
+                     lang === 'de' ? 'Alemán' :
+                     lang}
+                  </Th>
+                ))}
+              <Th position="sticky" right={0} bg="white" boxShadow="xs" zIndex={1} width="100px">Acciones</Th>
             </Tr>
-          ) : (
-            paginatedGroupedCopys.map(group => (
-              <CopyRow
-                key={group.slug}
-                group={group}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onViewHistory={onViewHistory}
-                languages={languages}
-                showLanguages={showLanguages}
-                groupedCopys={groupedCopys}
-              />
-            ))
-          )}
-        </Tbody>
-      </Table>
+          </Thead>
+          <Tbody>
+            {groupedCopys.length === 0 ? (
+              <Tr>
+                <Td colSpan={showLanguages.length + 2} textAlign="center" py={4}>
+                  No hay copys para mostrar
+                </Td>
+              </Tr>
+            ) : (
+              paginatedGroupedCopys.map(group => (
+                <CopyRow
+                  key={group.slug}
+                  group={group}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onViewHistory={onViewHistory}
+                  languages={languages}
+                  showLanguages={showLanguages}
+                  groupedCopys={groupedCopys}
+                />
+              ))
+            )}
+          </Tbody>
+        </Table>
+      </Box>
       
       {/* Paginación */}
       {groupedCopys.length > 0 && (
@@ -537,7 +574,7 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
         />
       )}
       
-      <Text mt={2} fontSize="sm" color="gray.600">
+      <Text mt={2} fontSize="sm" color="gray.500">
         {`${groupedCopys.length} slugs únicos (${copys.length} traducciones totales)`}
       </Text>
     </Box>
@@ -667,7 +704,7 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
     <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose}>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader color="red.500">
+        <ModalHeader>
           <HStack>
             <span>⚠️</span>
             <Text>Confirmar eliminación</Text>
@@ -688,7 +725,7 @@ export const CopyTableView: React.FC<CopyTableViewProps> = ({
             Cancelar
           </Button>
           <Button 
-            colorScheme="red" 
+            colorScheme="red"
             onClick={() => {
               // Eliminar todas las traducciones del slug
               const groupToDelete = groupedCopys.find(g => g.slug === slugToDelete);
