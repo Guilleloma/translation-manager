@@ -147,6 +147,16 @@ const CopySchema: Schema = new Schema({
   isBulkImport: {
     type: Boolean,
     default: false
+  },
+  // Campo para indicar si el slug necesita revisión por parte de un desarrollador
+  needsSlugReview: {
+    type: Boolean,
+    default: true // Por defecto, todos los slugs necesitan revisión
+  },
+  // Metadatos adicionales (para información de revisión de slug, etc.)
+  metadata: {
+    type: Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true, // Agrega createdAt y updatedAt automáticamente

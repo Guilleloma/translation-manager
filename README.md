@@ -206,7 +206,7 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Flujos de aprobación según roles
   - ✅ Rol "Developer" con permisos especiales para modificar slugs
 
-### Sprint 11: Mejoras de Consistencia UI ✅
+### Sprint 11: Mejoras de Consistencia UI y Panel de Developer ✅
 - ✅ Estandarización de estados y colores
   - ✅ Componente `StatusBadge` reutilizable para mostrar estados de forma consistente
   - ✅ Configuración centralizada de colores y etiquetas para cada estado
@@ -219,6 +219,15 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Componente `LanguageBadge` reutilizable para mostrar idiomas de forma consistente
   - ✅ Configuración centralizada de nombres y colores para cada idioma
   - ✅ Tooltips para mostrar el nombre completo cuando se usa el código
+- ✅ Panel de tareas para developers
+  - ✅ Detección automática de slugs auto-generados
+  - ✅ Interfaz para editar y mejorar slugs
+  - ✅ Estadísticas por idioma de textos pendientes
+  - ✅ Filtrado por idioma y búsqueda de texto
+- ✅ API para actualización individual de copys
+  - ✅ Endpoint PATCH para modificar copys específicos
+  - ✅ Validación de unicidad slug+idioma
+  - ✅ Manejo de errores y validaciones
 
 ### Sprint 11.1: Seguridad y Mejoras de UX ✅
 - ✅ Restricción de operaciones para usuarios no autenticados. Solo se pueden ver los datos de la lista de copys y tabla, pero no se pueden editar, eliminar ni crear copys sin autenticación.
@@ -297,7 +306,11 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - ✅ Mejora del feedback visual durante importaciones masivas
   - ✅ Indicador de progreso persistente
   - ✅ Detalles de elementos procesados, errores y advertencias
-  - ✅ Fases de importación claramente identificadas
+  - ✅ Resumen detallado al finalizar importación
+- ✅ Manejo mejorado de duplicados
+  - ✅ Detección y actualización de traducciones existentes
+  - ✅ Validación por combinación slug+idioma
+  - ✅ Logs detallados para debugging
 
 ### Sprint 20: Optimización de componentes y tests ✅
 - ✅ Mejora de rendimiento en componentes de paginación

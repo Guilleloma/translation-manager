@@ -184,7 +184,9 @@ class DataService {
       tags: dbCopy.tags || [],
       comments: dbCopy.comments || [],
       history: dbCopy.history || [],
-      isBulkImport: dbCopy.isBulkImport || false
+      isBulkImport: dbCopy.isBulkImport || false,
+      needsSlugReview: dbCopy.needsSlugReview || false, // Añadir la propiedad needsSlugReview
+      metadata: dbCopy.metadata || {}
     };
   }
   
@@ -377,7 +379,9 @@ class DataService {
           tags: copy.tags || [],
           comments: copy.comments || [],
           history: copy.history || [],
-          isBulkImport: copy.isBulkImport || false
+          isBulkImport: copy.isBulkImport || false,
+          needsSlugReview: copy.needsSlugReview !== undefined ? copy.needsSlugReview : true, // Por defecto true
+          metadata: copy.metadata || {}
         };
         
         await CopyModel.create(copyToSave);
