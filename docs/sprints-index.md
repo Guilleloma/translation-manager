@@ -54,6 +54,15 @@ Este documento sirve como índice centralizado de todos los sprints del proyecto
   - Scroll horizontal siempre visible
   - Feedback visual en asignación de copys
 
+### Sprint 23: Administración de Base de Datos ✅
+- **Archivo**: [sprint-23-db-management.md](./sprint-23-db-management.md)
+- **Descripción**: Implementación de funcionalidades para administrar la base de datos directamente desde el panel de administración.
+- **Características principales**:
+  - Eliminación de todos los copys desde el panel de administración
+  - Confirmación con múltiples advertencias para operaciones destructivas
+  - Feedback detallado sobre el resultado de las operaciones
+  - Preservación de la base de datos de usuarios
+
 ## Sprints Planificados
 
 ### Sprint 15: Traducción automática con OpenAI ⏳

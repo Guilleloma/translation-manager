@@ -695,6 +695,60 @@ class DataService {
     
     console.log('========================');
   }
+  
+  /**
+   * Elimina todos los copys de la base de datos
+   * Esta operación es irreversible y solo debe ser utilizada por administradores
+   * No afecta a la base de datos de usuarios
+   * 
+   * @returns Promise con el resultado de la operación
+   */
+  async deleteAllCopys(): Promise<{ success: boolean; message: string; deletedCount?: number }> {
+    console.log('⚠️ [DataService] Eliminando todos los copys...');
+    
+    try {
+      // Llamar al endpoint de API para eliminar todos los copys
+      const response = await fetch('/api/db/reset-copies', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [DataService] Error al eliminar copys:', errorData);
+        return {
+          success: false,
+          message: errorData.message || 'Error al eliminar los copys'
+        };
+      }
+      
+      const result = await response.json();
+      
+      // Limpiar localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('copys');
+      }
+      
+      // Forzar recarga de datos
+      await this.refreshData();
+      
+      console.log(`✅ [DataService] Eliminados ${result.deletedCount} copys`);
+      
+      return {
+        success: true,
+        message: result.message || `Se han eliminado ${result.deletedCount} copys`,
+        deletedCount: result.deletedCount
+      };
+    } catch (error) {
+      console.error('❌ [DataService] Error al eliminar copys:', error);
+      return {
+        success: false,
+        message: (error as Error).message || 'Error al eliminar los copys'
+      };
+    }
+  }
 }
 
 // Singleton
