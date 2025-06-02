@@ -35,8 +35,9 @@ import {
   Tooltip,
   IconButton,
   Spinner,
+  Divider,
 } from '@chakra-ui/react';
-import { ArrowForwardIcon, SettingsIcon, AtSignIcon, EditIcon, RepeatIcon } from '@chakra-ui/icons';
+import { ArrowForwardIcon, SettingsIcon, AtSignIcon, EditIcon, RepeatIcon, DeleteIcon, WarningIcon } from '@chakra-ui/icons';
 import NextLink from 'next/link';
 import { useUser } from '../../context/UserContext';
 import { UserRole, User } from '../../types/user';
@@ -55,9 +56,24 @@ import dataService from '../../services/dataService';
 export default function AdminPanel() {
   const { currentUser, users, updateUser } = useUser();
   const toast = useToast();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  
+  // Diálogo para eliminar usuario
+  const { 
+    isOpen: isUserDeleteOpen, 
+    onOpen: onUserDeleteOpen, 
+    onClose: onUserDeleteClose 
+  } = useDisclosure();
+  
+  // Diálogo para eliminar todos los copys
+  const { 
+    isOpen: isResetCopysOpen, 
+    onOpen: onResetCopysOpen, 
+    onClose: onResetCopysClose 
+  } = useDisclosure();
+  
   const cancelRef = React.useRef<HTMLButtonElement>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Usar el nuevo hook para copys
   const { copys, loading: isLoadingCopys, refresh: refreshCopys } = useCopys();
@@ -69,7 +85,7 @@ export default function AdminPanel() {
   }, [copys]);
   
   // Referencia para controlar los toasts
-  const toastIdRef = useRef<string | number>();
+  const toastIdRef = useRef<string | number | null>(null);
   const lastToastTime = useRef<number>(0);
   const pendingUpdates = useRef<number>(0);
   
@@ -125,7 +141,7 @@ export default function AdminPanel() {
       }
       
       // Resetear el estado
-      toastIdRef.current = undefined;
+      toastIdRef.current = null;
       pendingUpdates.current = 0;
       lastToastTime.current = Date.now();
     }, 1000); // Esperar 1 segundo para acumular actualizaciones
@@ -183,36 +199,56 @@ export default function AdminPanel() {
 
   // Function to delete user
   const handleDeleteUser = () => {
-    if (!selectedUser || !currentUser) return;
-
-    console.log(`Deleting user: ${selectedUser.username}`);
-
-    // In a real app, this would be an API call
-    // For this prototype, we just filter out the user from our local state
-    const updatedUsers = users.filter(u => u.id !== selectedUser.id);
-
-    // Update local storage (in a real app, this would be handled by the API)
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-
-    console.log(`User deleted: ${selectedUser.username}`);
-
-    // For this prototype, we'll just show a success message
-    toast({
-      title: 'Usuario eliminado',
-      description: `El usuario ${selectedUser.username} ha sido eliminado`,
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
-
-    onClose();
+    // Implementar lógica para eliminar usuario
+    onUserDeleteClose();
   };
 
-  // Function to confirm delete
+  // Function to confirm delete user
   const confirmDelete = (user: User) => {
-    console.log(`Confirming delete for user: ${user.username}`);
     setSelectedUser(user);
-    onOpen();
+    onUserDeleteOpen();
+  };
+
+  /**
+   * Función para eliminar todos los copys de la base de datos
+   * Esta operación es irreversible y solo debe ser utilizada por administradores
+   */
+  const handleDeleteAllCopys = async () => {
+    try {
+      setIsDeleting(true);
+      
+      // Llamar al método del dataService
+      const result = await dataService.deleteAllCopys();
+      
+      // Cerrar el diálogo
+      onResetCopysClose();
+      
+      // Mostrar notificación
+      toast({
+        title: result.success ? 'Operación exitosa' : 'Error',
+        description: result.message,
+        status: result.success ? 'success' : 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+      
+      // Actualizar la lista de copys
+      if (result.success) {
+        refreshCopys();
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: `Error al eliminar los copys: ${(error as Error).message}`,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -229,7 +265,7 @@ export default function AdminPanel() {
               icon={isLoadingCopys ? <Spinner size="sm" /> : <RepeatIcon />}
               onClick={() => {
                 refreshCopys();
-                dataService.debug(); // Mostrar debug en consola
+                // Eliminar llamada a método debug que no existe
               }}
               size="sm"
               colorScheme="blue"
@@ -304,6 +340,47 @@ export default function AdminPanel() {
                 </Text>
               </Box>
             </Box>
+            
+            {/* Sección de Administración de Base de Datos */}
+            <Box mt={8}>
+              <Heading size="md" mb={4}>Administración de Base de Datos</Heading>
+              <Box
+                p={4}
+                borderWidth="1px"
+                borderRadius="md"
+                bg="red.50"
+              >
+                <Heading size="sm" mb={2} color="red.600">
+                  <Flex align="center">
+                    <WarningIcon mr={2} />
+                    Operaciones Peligrosas
+                  </Flex>
+                </Heading>
+                <Text mb={4} color="gray.700">
+                  Las siguientes operaciones son irreversibles y afectarán permanentemente a la base de datos.
+                  Úsalas con extrema precaución.
+                </Text>
+                
+                <Divider mb={4} />
+                
+                <Box>
+                  <Heading size="xs" mb={2} color="red.600">Eliminar Todos los Copys</Heading>
+                  <Text mb={2} fontSize="sm" color="gray.700">
+                    Esta operación eliminará todos los copys de la base de datos. Los usuarios no se verán afectados.
+                  </Text>
+                  <Button
+                    leftIcon={<DeleteIcon />}
+                    colorScheme="red"
+                    variant="outline"
+                    size="sm"
+                    onClick={onResetCopysOpen}
+                    isDisabled={isDeleting}
+                  >
+                    Eliminar Todos los Copys
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
           </TabPanel>
 
           {/* Copy Assignment Tab */}
@@ -375,11 +452,11 @@ export default function AdminPanel() {
         </TabPanels>
       </Tabs>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete User Confirmation Dialog */}
       <AlertDialog
-        isOpen={isOpen}
+        isOpen={isUserDeleteOpen}
         leastDestructiveRef={cancelRef}
-        onClose={onClose}
+        onClose={onUserDeleteClose}
       >
         <AlertDialogOverlay>
           <AlertDialogContent>
@@ -392,11 +469,57 @@ export default function AdminPanel() {
             </AlertDialogBody>
 
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
+              <Button ref={cancelRef} onClick={onUserDeleteClose}>
                 Cancelar
               </Button>
               <Button colorScheme="red" onClick={handleDeleteUser} ml={3}>
                 Eliminar
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+      
+      {/* Delete All Copys Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isResetCopysOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onResetCopysClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold" color="red.600">
+              <Flex align="center">
+                <WarningIcon mr={2} />
+                Eliminar Todos los Copys
+              </Flex>
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              <Text mb={3} fontWeight="bold">
+                ¡ADVERTENCIA! Esta es una operación destructiva e irreversible.
+              </Text>
+              <Text mb={3}>
+                Estás a punto de eliminar <strong>TODOS</strong> los copys de la base de datos. 
+                Esta acción no afectará a los usuarios, pero eliminará permanentemente todas las traducciones.
+              </Text>
+              <Text fontWeight="bold">
+                ¿Estás completamente seguro de que deseas continuar?
+              </Text>
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onResetCopysClose}>
+                Cancelar
+              </Button>
+              <Button 
+                colorScheme="red" 
+                onClick={handleDeleteAllCopys} 
+                ml={3}
+                isLoading={isDeleting}
+                loadingText="Eliminando..."
+              >
+                Eliminar Todos los Copys
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
