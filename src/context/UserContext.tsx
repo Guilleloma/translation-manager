@@ -54,28 +54,35 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // Asegurarnos que isLoading sea true al inicio
     setIsLoading(true);
     
-    // Simular un pequeño retraso para asegurarnos de que el spinner se muestre
-    setTimeout(() => {
+    try {
+      // Recuperar usuario del localStorage inmediatamente
       const storedUser = localStorage.getItem('user');
+      
       if (storedUser) {
-        try {
-          setCurrentUser(JSON.parse(storedUser));
-          console.log('User session restored');
-        } catch (error) {
-          console.error('Failed to parse stored user:', error);
-          localStorage.removeItem('user');
-        }
+        const parsedUser = JSON.parse(storedUser);
+        setCurrentUser(parsedUser);
+        console.log('User session restored:', parsedUser.username);
       }
-      setIsLoading(false);
-    }, 300); // Pequeño retraso para asegurar que se muestre el feedback visual
+    } catch (error) {
+      console.error('Failed to parse stored user:', error);
+      localStorage.removeItem('user');
+    } finally {
+      // Pequeño retraso solo para el spinner, pero el usuario ya está establecido
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 300);
+    }
   }, []);
 
   // Store user in localStorage when it changes
   useEffect(() => {
     if (currentUser) {
+      // Guardar usuario en localStorage inmediatamente cuando cambia
       localStorage.setItem('user', JSON.stringify(currentUser));
       console.log(`User session saved: ${currentUser.username}`);
-    } else {
+    } else if (currentUser === null) {
+      // Solo eliminar si explícitamente se establece a null (logout)
+      // No eliminar durante la inicialización
       localStorage.removeItem('user');
       console.log('User session cleared');
     }
@@ -195,6 +202,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // First set logging out state to prevent components from rendering
     // during the logout process
     setIsLoggingOut(true);
+    
+    // Eliminar la sesión del localStorage inmediatamente
+    localStorage.removeItem('user');
     
     // Use a small delay to ensure React doesn't try to update components
     // that might be unmounting
