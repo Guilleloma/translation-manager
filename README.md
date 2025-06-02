@@ -248,6 +248,12 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Indicadores de carga durante operaciones asíncronas
   - ✅ Mensajes de error más descriptivos y útiles
 
+### Sprint 11.2: Corrección de Persistencia de Sesión ✅
+- ✅ Solución al bug de deslogueo al refrescar la página
+  - ✅ Mejora en la gestión de sesiones de usuario
+  - ✅ Optimización del almacenamiento en localStorage
+  - ✅ Tests automatizados para verificar la persistencia
+
 ### Sprint 12: Pruebas Automatizadas 🧪
 - 🔄 Configuración de entorno de pruebas E2E con Cypress
 - 🔄 Pruebas automatizadas para flujos críticos:
