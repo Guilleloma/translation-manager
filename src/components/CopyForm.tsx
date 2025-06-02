@@ -33,7 +33,7 @@ import ChangeHistory from './history/ChangeHistory';
 interface CopyFormProps {
   // Se pasan todos los copys existentes (excepto el que se está editando)
   existingCopys: Copy[];
-  onSave: (copy: Omit<Copy, 'id' | 'status'>) => void;
+  onSave: (copy: Omit<Copy, 'id' | 'status'>) => void | Promise<void>;
   onCancel?: () => void;
   initialValues?: Partial<Copy>;
   isEditing?: boolean;
@@ -152,7 +152,7 @@ export const CopyForm: React.FC<CopyFormProps> = ({
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Llamar a la función de guardado proporcionada por el padre
-      onSave(copyData);
+      await onSave(copyData);
       
       // El toast se mostrará desde el componente padre para evitar duplicados
       
