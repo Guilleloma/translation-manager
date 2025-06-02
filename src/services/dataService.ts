@@ -264,7 +264,7 @@ class DataService {
       });
     }
   }
-  
+
   // Versión sincrónica para compatibilidad
   getCopysSync(): Copy[] {
     return this.getLocalCopys();
@@ -391,16 +391,36 @@ class DataService {
       }
     } else {
       // Si no estamos en el servidor o no podemos usar MongoDB, usar setCopys
+      const copys = await this.getCopys();
+      copys.push(copy);
       await this.setCopys(copys);
     }
   }
 
   async updateCopy(copyId: string, updates: Partial<Copy>): Promise<void> {
+    console.log('🔄 [DataService] updateCopy llamado:', { copyId, updates });
+    
     // Actualizar en memoria
     const copys = await this.getCopys();
+    console.log(`📊 [DataService] Total copys antes de actualizar: ${copys.length}`);
+    
     const index = copys.findIndex(c => c.id === copyId);
     if (index !== -1) {
-      copys[index] = { ...copys[index], ...updates };
+      console.log(`🎯 [DataService] Copy encontrado en índice ${index}:`, copys[index]);
+      
+      // Si updates tiene un id, usar el copy completo; si no, hacer merge
+      if (updates.id && updates.slug && updates.text && updates.language) {
+        // Es un copy completo, reemplazar
+        console.log('🔄 [DataService] Reemplazando copy completo');
+        copys[index] = updates as Copy;
+      } else {
+        // Es una actualización parcial, hacer merge
+        console.log('🔄 [DataService] Haciendo merge parcial');
+        copys[index] = { ...copys[index], ...updates };
+      }
+      
+      console.log(`✅ [DataService] Copy actualizado:`, copys[index]);
+      console.log(`📊 [DataService] Total copys después de actualizar: ${copys.length}`);
       
       // Actualizar localStorage si estamos en el cliente
       if (typeof window !== 'undefined') {
@@ -417,7 +437,7 @@ class DataService {
         }
       }
     } else {
-      console.log(`[DataService] No se encontró el copy ${copyId} para actualizar`);
+      console.log(`❌ [DataService] No se encontró el copy ${copyId} para actualizar`);
       return;
     }
     
@@ -468,6 +488,38 @@ class DataService {
       // Si no estamos en el servidor o no podemos usar MongoDB, usar setCopys
       await this.setCopys(filtered);
     }
+  }
+
+  // Método para forzar recarga desde el servidor (bypass localStorage)
+  async getCopysFromServer(): Promise<Copy[]> {
+    console.log('🔄 [DataService] Forzando recarga desde servidor...');
+    
+    if (typeof window !== 'undefined') {
+      // En el cliente, usar la API para obtener datos frescos
+      try {
+        const serverData = await apiService.fetchAllData();
+        if (serverData && serverData.copys) {
+          console.log(`📊 [DataService] Copys obtenidos del servidor: ${serverData.copys.length}`);
+          
+          // Actualizar localStorage con los datos frescos
+          localStorage.setItem('copys', JSON.stringify(serverData.copys));
+          
+          // Notificar listeners
+          this.notifyListeners('copys', serverData.copys);
+          
+          return serverData.copys.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0).getTime();
+            const dateB = new Date(b.createdAt || 0).getTime();
+            return dateB - dateA; // Orden descendente
+          });
+        }
+      } catch (error) {
+        console.error('[DataService] Error al obtener copys del servidor:', error);
+      }
+    }
+    
+    // Fallback a método normal
+    return this.getCopys();
   }
 
   // Métodos para usuarios

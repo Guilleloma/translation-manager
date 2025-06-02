@@ -145,8 +145,18 @@ export default function Home() {
     console.log('🔄 Refrescando lista de copys...');
     
     try {
-      const storedCopys = await dataService.getCopys();
-      console.log(`📊 Copys obtenidos: ${storedCopys.length} total`);
+      const storedCopys = await dataService.getCopysFromServer();
+      console.log(`📊 Copys obtenidos desde dataService: ${storedCopys.length} total`);
+      
+      // Log de algunos copys para debugging
+      if (storedCopys.length > 0) {
+        console.log('📋 Primeros 3 copys obtenidos:', storedCopys.slice(0, 3).map(c => ({
+          id: c.id,
+          slug: c.slug,
+          language: c.language,
+          text: c.text.substring(0, 30) + '...'
+        })));
+      }
       
       setCopys(storedCopys);
       setUpdateTrigger(prev => prev + 1);
@@ -538,58 +548,10 @@ export default function Home() {
         if (result.success) {
           console.log('✅ Copy creado exitosamente:', result.copy.id);
           
-          // Actualizar inmediatamente el estado local para mostrar el nuevo copy sin necesidad de recargar
-          if (!isImport && !(data as any).isBulkImport) {
-            // Agregar el nuevo copy directamente al estado local
-            const newCopy = result.copy;
-            console.log('🔄 Actualizando estado local con el nuevo copy:', newCopy.id);
-            
-            // Actualizar el estado de copys directamente
-            setCopys(prevCopys => {
-              // Verificar si el copy ya existe en el estado
-              const exists = prevCopys.some(c => c.id === newCopy.id);
-              if (!exists) {
-                // Agregar el nuevo copy al inicio del array para que aparezca primero
-                return [newCopy, ...prevCopys];
-              }
-              return prevCopys;
-            });
-            
-            // Actualizar también el estado filtrado directamente para que aparezca inmediatamente
-            setFilteredCopys(prevFiltered => {
-              // Verificar si el copy ya existe en el estado filtrado
-              const exists = prevFiltered.some(c => c.id === newCopy.id);
-              
-              // Solo agregar si cumple con los filtros actuales o si no hay filtros
-              const shouldAdd = !exists && (
-                (statusFilter === "all" || newCopy.status === statusFilter) &&
-                (tagFilter === "all" || (newCopy.tags && newCopy.tags.includes(tagFilter))) &&
-                (searchQuery.trim() === "" || 
-                 newCopy.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                 newCopy.text.toLowerCase().includes(searchQuery.toLowerCase()))
-              );
-              
-              if (shouldAdd) {
-                // Agregar al inicio y mantener el orden
-                return [newCopy, ...prevFiltered].sort((a, b) => {
-                  const dateA = new Date(a.createdAt || 0).getTime();
-                  const dateB = new Date(b.createdAt || 0).getTime();
-                  return dateB - dateA; // Orden descendente
-                });
-              }
-              return prevFiltered;
-            });
-            
-            // Forzar la actualización de la UI
-            setUpdateTrigger(prev => prev + 1);
-            
-            console.log('✅ Estado local actualizado con el nuevo copy');
-          } else {
-            // Si es una importación masiva, actualizar toda la lista
-            console.log('🔄 Actualizando lista de copys...');
-            await refreshCopysList();
-            console.log('✅ Lista actualizada');
-          }
+          // Siempre actualizar la lista completa para asegurar sincronización
+          console.log('🔄 Actualizando lista de copys...');
+          await refreshCopysList();
+          console.log('✅ Lista actualizada');
           
           // Limpiar el formulario solo si no es una importación masiva
           if (!isImport && !(data as any).isBulkImport) {
@@ -954,8 +916,8 @@ export default function Home() {
               <ModalBody>
                 <CopyForm
                   existingCopys={copys.filter(c => editingCopy ? c.id !== editingCopy.id : true)}
-                  onSave={(data) => {
-                    handleSave(data, !!editingCopy);
+                  onSave={async (data) => {
+                    await handleSave(data, !!editingCopy);
                     onEditClose();
                   }}
                   onStatusChange={handleStatusChange}
