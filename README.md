@@ -170,14 +170,12 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Modelado de datos para copys/traducciones
   - ✅ API para CRUD de copys con persistencia
   - ✅ Migración de sistema en memoria a MongoDB
-  - ✅ Corrección de problemas con selección de checkboxes
-  - ✅ Implementación de eliminación masiva
   - ✅ Arquitectura híbrida cliente/servidor para persistencia
   - ✅ API de sincronización para operaciones CRUD
   - ✅ Manejo de errores y fallbacks para garantizar disponibilidad
-- ⏳ Despliegue de versión Beta
-  - ⏳ Configuración de entorno de pruebas
-  - ⏳ Documentación para usuarios beta
+- ✅ Despliegue de versión Beta
+  - ✅ Configuración de entorno de pruebas
+  - ✅ Documentación para usuarios beta
 
 ### Sprint 10: Flujo de revisión y feedback ✅
 - ✅ Sistema de comentarios para cada copy
@@ -230,23 +228,23 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Manejo de errores y validaciones
 
 ### Sprint 11.1: Seguridad y Mejoras de UX ✅
-- ✅ Restricción de operaciones para usuarios no autenticados. Solo se pueden ver los datos de la lista de copys y tabla, pero no se pueden editar, eliminar ni crear copys sin autenticación.
+- ✅ Restricción de operaciones para usuarios no autenticados
+  - ✅ Solo se pueden ver los datos de la lista de copys y tabla sin autenticación
+  - ✅ No se pueden editar, eliminar ni crear copys sin autenticación
+- ✅ Confirmación doble para acciones irreversibles
+  - ✅ Modal de confirmación para eliminación de copys
+  - ✅ Diseño claro que indique la irreversibilidad de la acción
+- ✅ Mejoras de feedback visual
+  - ✅ Notificaciones toast para confirmar acciones completadas
+  - ✅ Indicadores de carga durante operaciones asíncronas
+  - ✅ Mensajes de error más descriptivos y útiles
 
-### Sprint 11.2: Selección múltiple y operaciones en lote ✅
+### Sprint 11.3: Selección múltiple y operaciones en lote ✅
 - ✅ Implementación de selección múltiple mediante checkboxes
   - ✅ Corrección de errores en la selección de checkboxes
   - ✅ Barra de acciones contextual para elementos seleccionados
   - ✅ Eliminación masiva de elementos seleccionados
   - ✅ Feedback visual claro durante el proceso de selección
-
-- ✅ Confirmación doble para acciones irreversibles
-  - ✅ Modal de confirmación para eliminación de copys
-  - ✅ Diseño claro que indique la irreversibilidad de la acción
-
-- ✅ Mejoras de feedback visual
-  - ✅ Notificaciones toast para confirmar acciones completadas
-  - ✅ Indicadores de carga durante operaciones asíncronas
-  - ✅ Mensajes de error más descriptivos y útiles
 
 ### Sprint 11.2: Corrección de Persistencia de Sesión ✅
 - ✅ Solución al bug de deslogueo al refrescar la página
@@ -350,7 +348,19 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ⏳ Notificaciones de nuevas traducciones
   - ⏳ Eventos de actualización para integración con CI/CD
 
-### Sprint 22: Optimización de rendimiento para importaciones masivas ✅
+### Sprint 22: Mejoras de UX en la Tabla de Copys y Asignación ✅
+- ✅ Tabla de Copys con Columna de Acciones Fija
+  - ✅ Implementación de una columna de acciones "sticky" visible al hacer scroll horizontal
+  - ✅ Mejor experiencia de usuario al no perder el contexto de las acciones disponibles
+- ✅ Scroll Horizontal Siempre Visible
+  - ✅ Implementación de scrollbars siempre visibles con estilos mejorados
+  - ✅ Indicación visual clara de que hay más contenido disponible horizontalmente
+- ✅ Feedback Visual en Asignación de Copys
+  - ✅ Indicador de progreso durante la asignación
+  - ✅ Gestión optimizada de notificaciones toast
+  - ✅ Estado de carga visual durante el proceso
+
+### Sprint 23: Optimización de rendimiento para importaciones masivas ✅
 - ✅ Procesamiento en lotes para archivos grandes (>2000 traducciones)
   - ✅ División en lotes de 100 elementos para evitar bloqueo de UI
   - ✅ Pausas entre lotes para mantener responsividad
@@ -364,8 +374,10 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
   - ✅ Validación por combinación slug+idioma
   - ✅ Logs detallados para debugging
 
-### Sprint 23: Optimización de tiempos de compilación y navegación 🔄
+### Sprint 24: Optimización de tiempos de compilación y navegación 🔄
 - 🔄 Optimización de la configuración de Next.js
+- 🔄 Implementación de estrategias de carga diferida
+- 🔄 Mejora de tiempos de respuesta en navegación entre páginas
   - 🔄 Configuración mejorada para reducir tiempos de compilación
   - 🔄 Optimización de importaciones de paquetes grandes como Chakra UI
   - 🔄 Activación de optimizeCss para mejorar rendimiento
@@ -519,6 +531,12 @@ Más información: [react-i18next docs](https://react.i18next.com/)
 
 8. **Integración con el frontend (i18n)**
    - Documentación y ejemplo de uso con `react-i18next` o `next-i18next`
+
+---
+
+## Índice de Sprints
+
+Para una visión completa y organizada de todos los sprints del proyecto, consulta el [índice de sprints](./docs/sprints-index.md). Este documento centraliza la información de todos los sprints, mantiene una estructura coherente y facilita el seguimiento del progreso del proyecto.
 
 ---
 
