@@ -199,29 +199,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const logout = (callback?: () => void) => {
     console.log('Logging out user');
     
-    // First set logging out state to prevent components from rendering
-    // during the logout process
+    // Notificar al sistema que estamos en proceso de logout
+    // Esto previene renderizados inesperados durante la transición
     setIsLoggingOut(true);
     
     // Eliminar la sesión del localStorage inmediatamente
     localStorage.removeItem('user');
     
-    // Use a small delay to ensure React doesn't try to update components
-    // that might be unmounting
-    setTimeout(() => {
-      setCurrentUser(null);
+    // Actualizar el estado en un solo batch para evitar renderizados parciales
+    // que puedan causar problemas con los hooks
+    setCurrentUser(null);
+    
+    // Para ejecutar el callback, usamos requestAnimationFrame para asegurarnos
+    // que todas las actualizaciones de estado hayan sido procesadas por React
+    requestAnimationFrame(() => {
+      // Desactivar el indicador de logout
+      setIsLoggingOut(false);
       
-      // Execute callback only after state has been updated
+      // Ejecutar callback después de la actualización de estado
       if (callback) {
-        // Additional delay to ensure state updates have propagated
-        setTimeout(() => {
-          setIsLoggingOut(false);
-          callback();
-        }, 50);
-      } else {
-        setIsLoggingOut(false);
+        callback();
       }
-    }, 50);
+    });
   };
 
   // Update user in the users list
