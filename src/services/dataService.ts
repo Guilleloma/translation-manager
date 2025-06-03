@@ -181,7 +181,7 @@ class DataService {
       reviewedAt: dbCopy.reviewedAt,
       approvedBy: dbCopy.approvedBy?.toString(),
       approvedAt: dbCopy.approvedAt,
-      tags: dbCopy.tags || [],
+      tags: Array.isArray(dbCopy.tags) ? dbCopy.tags : (dbCopy.tags ? [dbCopy.tags] : []),
       comments: dbCopy.comments || [],
       history: dbCopy.history || [],
       isBulkImport: dbCopy.isBulkImport || false,
