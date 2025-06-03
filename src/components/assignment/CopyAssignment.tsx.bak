@@ -26,13 +26,12 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { useUser } from '../../context/UserContext';
-import { Copy } from '../../types/copy';
-import { User } from '../../types/user';
+import { Copy, CopyStatus } from '../../types/copy';
 import dataService from '../../services/dataService';
+import { User } from '../../types/user';
 
-// Array de idiomas soportados
+// Array de idiomas soportados - Español no aparece porque es el idioma base de referencia
 const SUPPORTED_LANGUAGES = [
-  { code: 'es', name: 'Español' },
   { code: 'en', name: 'English' },
   { code: 'fr', name: 'Français' },
   { code: 'de', name: 'Deutsch' },
@@ -50,6 +49,15 @@ interface CopyAssignmentProps {
  * Permite asignación individual o masiva de copys pendientes
  */
 export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProps) {
+  // Función para refrescar los copys desde el servidor
+  const refreshCopys = async () => {
+    try {
+      await dataService.getCopysFromServer();
+      console.log('Copys refrescados desde el servidor');
+    } catch (error) {
+      console.error('Error al refrescar copys:', error);
+    }
+  };
   const { users } = useUser();
   const toast = useToast();
   const [selectedLanguage, setSelectedLanguage] = useState('');
@@ -58,7 +66,7 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
   const [selectAll, setSelectAll] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [progress, setProgress] = useState(0);
-  const toastIdRef = useRef<string | number | null>(null);
+  const toastIdRef = useRef<string | number>();
 
   // Color de fondo para la tabla
   const tableBgColor = useColorModeValue('white', 'gray.800');
@@ -74,55 +82,40 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
     );
   }, [users, selectedLanguage]);
 
-  // Filtrar copys por idioma seleccionado y no asignados
+  // Filtrar copys que necesitan traducción en el idioma seleccionado
   const pendingCopys = useMemo(() => {
-    if (!selectedLanguage || !Array.isArray(copys)) return [];
+    if (!selectedLanguage || !Array.isArray(copys) || selectedLanguage === 'es') return [];
     
-    // Lógica corregida: encontrar copys que necesitan traducción al idioma seleccionado
-    console.log(`Buscando copys que necesitan traducción a: ${selectedLanguage}`);
+    console.log(`Filtrando copys pendientes para idioma: ${selectedLanguage}`);
     
-    // Agrupar copys por slug para encontrar qué traducciones faltan
-    const copysBySlug = copys.reduce((acc, copy) => {
-      if (!acc[copy.slug]) {
-        acc[copy.slug] = [];
-      }
-      acc[copy.slug].push(copy);
-      return acc;
-    }, {} as Record<string, typeof copys>);
+    // Obtener todos los slugs que ya tienen una versión en español
+    const spanishCopys = copys.filter(copy => copy.language === 'es');
     
-    const pendingForTranslation = [];
-    
-    // Para cada slug, verificar si falta la traducción al idioma seleccionado
-    for (const [slug, copies] of Object.entries(copysBySlug)) {
-      // Buscar la traducción en español (referencia)
-      const spanishCopy = copies.find(copy => copy.language === 'es');
+    // Para cada slug en español, verificar si existe una traducción en el idioma seleccionado
+    const needsTranslation = spanishCopys.flatMap(spanishCopy => {
+      // Buscar si ya existe una traducción para este slug en el idioma seleccionado
+      const hasTranslation = copys.some(copy => 
+        copy.slug === spanishCopy.slug && 
+        copy.language === selectedLanguage
+      );
       
-      // Buscar si ya existe traducción al idioma seleccionado
-      const targetLanguageCopy = copies.find(copy => copy.language === selectedLanguage);
-      
-      // Si hay texto de referencia en español y NO existe traducción al idioma seleccionado,
-      // o si existe pero está sin asignar, incluirlo en la lista
-      if (spanishCopy && (!targetLanguageCopy || targetLanguageCopy.status === 'not_assigned')) {
-        // Crear un objeto que represente la tarea de traducción pendiente
-        const pendingTask = {
-          id: targetLanguageCopy ? targetLanguageCopy.id : `${slug}_${selectedLanguage}`,
-          slug: slug,
-          text: spanishCopy.text, // Texto de referencia en español
-          language: selectedLanguage, // Idioma al que se debe traducir
-          status: targetLanguageCopy ? targetLanguageCopy.status : 'not_assigned',
-          needsTranslation: !targetLanguageCopy, // Indica si es una traducción completamente nueva
-          existingCopyId: targetLanguageCopy?.id // ID del copy existente si lo hay
-        };
-        
-        pendingForTranslation.push(pendingTask);
+      // Si no existe traducción, devolver un objeto con la información necesaria
+      if (!hasTranslation) {
+        return [{
+          id: `${spanishCopy.id}_${selectedLanguage}`, // ID temporal para el frontend
+          originalId: spanishCopy.id, // Guardamos el ID original del copy en español
+          slug: spanishCopy.slug,
+          text: spanishCopy.text, // Texto en español como referencia
+          language: selectedLanguage, // El idioma seleccionado
+          status: 'not_assigned' as CopyStatus
+        }];
       }
-    }
+      return [];
+    });
     
-    console.log(`Encontradas ${pendingForTranslation.length} tareas de traducción pendientes para ${selectedLanguage}:`, 
-      pendingForTranslation.map(t => ({ slug: t.slug, needsTranslation: t.needsTranslation })
-    ));
+    console.log(`Encontrados ${needsTranslation.length} copys que necesitan traducción al ${selectedLanguage}`);
     
-    return pendingForTranslation;
+    return needsTranslation;
   }, [copys, selectedLanguage]);
 
   // Limpiar selección cuando cambia el idioma
@@ -173,6 +166,125 @@ const handleAssign = async () => {
     });
     return;
   }
+  
+  // Obtener el usuario seleccionado
+  const translator = users.find(user => user.id === selectedTranslator);
+  if (!translator) {
+    toast({
+      title: 'Error',
+      description: 'El traductor seleccionado no existe',
+      status: 'error',
+      duration: 3000,
+      isClosable: true,
+    });
+    return;
+  }
+  
+  setIsAssigning(true);
+  setProgress(0);
+  
+  // Mostrar toast de progreso
+  toastIdRef.current = toast({
+    title: 'Asignando copys',
+    description: 'Iniciando asignación...',
+    status: 'info',
+    duration: null,
+    isClosable: false,
+  });
+  
+  try {
+    let completed = 0;
+    
+    // Procesar cada copy seleccionado
+    for (const copyId of selectedCopys) {
+      // Extraer el ID original si es un ID temporal
+      const [originalId, targetLanguage] = copyId.includes('_') 
+        ? copyId.split('_') 
+        : [copyId, selectedLanguage];
+      
+      // Buscar el copy original en español
+      const originalCopy = copys.find(c => c.id === originalId);
+      
+      if (originalCopy) {
+        // Crear un nuevo copy en el idioma destino basado en el original en español
+        const newCopy: Partial<Copy> = {
+          slug: originalCopy.slug,
+          text: '', // Texto vacío para que el traductor lo complete
+          language: targetLanguage,
+          assignedTo: selectedTranslator,
+          status: 'assigned' as CopyStatus,
+          // No incluimos needsReview porque no existe en el tipo Copy
+          translationGroupId: originalCopy.translationGroupId || originalCopy.id // Usar el mismo grupo de traducción
+        };
+        
+        // Llamar al servicio para crear el nuevo copy
+        await dataService.addCopy(newCopy as Copy);
+      } else {
+        // Si es un copy existente, simplemente actualizarlo
+        updateCopy(copyId, {
+          assignedTo: selectedTranslator,
+          status: 'assigned' as CopyStatus
+        });
+      }
+      
+      // Actualizar progreso
+      completed++;
+      const newProgress = Math.floor((completed / selectedCopys.length) * 100);
+      setProgress(newProgress);
+      
+      // Actualizar toast de progreso
+      if (toastIdRef.current) {
+        toast.update(toastIdRef.current, {
+          description: `Procesando... ${newProgress}%`,
+        });
+      }
+    }
+    
+    // Cerrar toast de progreso
+    if (toastIdRef.current) {
+      toast.close(toastIdRef.current);
+    }
+    
+    // Mostrar toast de éxito
+    toast({
+      title: 'Asignación completada',
+      description: `Se han asignado ${selectedCopys.length} copys al traductor seleccionado`,
+      status: 'success',
+      duration: 5000,
+      isClosable: true,
+    });
+    
+    // Limpiar selección
+    setSelectedCopys([]);
+    setSelectAll(false);
+    
+    // Refrescar la lista de copys pendientes
+    const refreshedCopys = await dataService.getCopysFromServer();
+    if (typeof updateCopy === 'function' && refreshedCopys) {
+      // Si hay una función para actualizar los copys en el componente padre, usarla
+      refreshCopys();
+    }
+    
+  } catch (error) {
+    console.error('Error al asignar copys:', error);
+    
+    // Cerrar toast de progreso
+    if (toastIdRef.current) {
+      toast.close(toastIdRef.current);
+    }
+    
+    // Mostrar toast de error
+    toast({
+      title: 'Error',
+      description: 'Ha ocurrido un error al asignar los copys',
+      status: 'error',
+      duration: 5000,
+      isClosable: true,
+    });
+  } finally {
+    setIsAssigning(false);
+  }
+};
 
   // Obtener el usuario seleccionado
   const translator = users.find(user => user.id === selectedTranslator);
@@ -196,34 +308,13 @@ const handleAssign = async () => {
   try {
     for (let i = 0; i < selectedCopys.length; i++) {
       const copyId = selectedCopys[i];
-      const pendingCopy = pendingCopys.find(copy => copy.id === copyId);
       
-      if (pendingCopy) {
-        if (pendingCopy.needsTranslation) {
-          // Crear un nuevo copy si es necesario
-          const newCopy: Copy = {
-            id: `${pendingCopy.slug}_${pendingCopy.language}_${Date.now()}`,
-            slug: pendingCopy.slug,
-            language: pendingCopy.language,
-            text: '',
-            status: 'assigned',
-            assignedTo: selectedTranslator,
-            assignedAt: new Date(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            needsSlugReview: false
-          };
-          
-          await dataService.addCopy(newCopy);
-        } else {
-          // Actualizar el copy existente
-          updateCopy(copyId, {
-            assignedTo: selectedTranslator,
-            assignedAt: new Date(),
-            status: 'assigned',
-          });
-        }
-      }
+      // Actualizar el copy
+      updateCopy(copyId, {
+        assignedTo: selectedTranslator,
+        assignedAt: new Date(),
+        status: 'assigned'
+      });
       
       // Actualizar progreso
       const currentProgress = Math.round(((i + 1) / totalCopys) * 100);
@@ -234,6 +325,7 @@ const handleAssign = async () => {
         if (toastIdRef.current) {
           toast.update(toastIdRef.current, {
             description: `${i + 1}/${totalCopys} copys asignados a ${translator?.username} (${currentProgress}%)`,
+            progress: currentProgress / 100,
           });
         }
       }
@@ -409,7 +501,9 @@ const handleAssign = async () => {
                     </Td>
                     <Td fontFamily="mono" fontSize="sm">{copy.slug}</Td>
                     <Td>
-                      <Text noOfLines={1} maxW="400px">{copy.text}</Text>
+                      <Tooltip label={copy.text} placement="top" hasArrow>
+                        <Text noOfLines={1} maxW="400px">{copy.text}</Text>
+                      </Tooltip>
                     </Td>
                     <Td>
                       <Badge colorScheme="yellow">Pendiente</Badge>
@@ -418,18 +512,6 @@ const handleAssign = async () => {
                 ))
               )}
             </Tbody>
-          </Table>
-
-          {pendingCopys.length > 0 && (
-            <Flex p={3} borderTopWidth="1px" borderColor={borderColor} bg="gray.50">
-              <Text fontSize="sm">
-                {pendingCopys.length} copys pendientes • {selectedCopys.length} seleccionados
-              </Text>
-              <Spacer />
-              {eligibleTranslators.length > 0 ? (
-                <HStack>
-                  {eligibleTranslators.map(user => (
-                    <Tag 
                       key={user.id} 
                       size="sm" 
                       variant="subtle" 
