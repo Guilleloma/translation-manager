@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '../../../../lib/mongodb';
 import CopyModel from '../../../../models/Copy';
 import UserModel from '../../../../models/User';
+import { Copy } from '../../../../types/copy';
+import { User } from '../../../../types/user';
+import mongoose from 'mongoose';
+
+// Interfaces para tipar los documentos de MongoDB
+interface MongoDBCopy {
+  _id: mongoose.Types.ObjectId;
+  slug?: string;
+  text?: string;
+  language?: string;
+  status?: string;
+  tags?: string[];
+  history?: any[];
+  [key: string]: any;
+}
+
+// Tipo para los resultados de lean()
+type LeanDocument = {
+  _id: any;
+  [key: string]: any;
+}
 
 /**
  * API para sincronizar datos entre el cliente y MongoDB
@@ -16,19 +37,36 @@ export async function GET(req: NextRequest) {
     const copys = await CopyModel.find().lean();
     const users = await UserModel.find().lean();
     
+    console.log(`🔄 [DB Sync] Procesando ${copys.length} copys desde MongoDB...`);
+    
     // Transformar _id a id para compatibilidad con el cliente
-    const transformedCopys = copys.map(copy => {
+    const transformedCopys = copys.map((copy: any) => {
+      // Extraer _id y resto de propiedades
       const { _id, ...rest } = copy;
+      
+      // Crear nuevo objeto con todas las propiedades necesarias
       return {
         ...rest,
+        // Garantizar que siempre tengamos un id como string
         id: _id ? _id.toString() : '',
+        // Garantizar que tags siempre sea un array
+        tags: Array.isArray(copy.tags) ? copy.tags : [],
+        // Garantizar que history siempre sea un array
+        history: Array.isArray(copy.history) ? copy.history : [],
       };
     });
     
-    const transformedUsers = users.map(user => {
+    // Solo log para copys con tags
+    const copysWithTags = transformedCopys.filter(copy => copy.tags && copy.tags.length > 0);
+    console.log(`✅ [DB Sync] ${copysWithTags.length} copys tienen tags:`, 
+               copysWithTags.map(c => `${c.slug}: ${JSON.stringify(c.tags)}`).join(', '));
+    
+    const transformedUsers = users.map((user: any) => {
+      // Extraer _id y resto de propiedades
       const { _id, ...rest } = user;
       return {
         ...rest,
+        // Garantizar que siempre tengamos un id como string
         id: _id ? _id.toString() : '',
       };
     });

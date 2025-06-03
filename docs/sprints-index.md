@@ -2,6 +2,18 @@
 
 Este documento sirve como índice centralizado de todos los sprints del proyecto Translation Manager, organizados cronológicamente y con una breve descripción de cada uno.
 
+## Sprint Actual
+
+### Sprint 12: Correcciones de Historial y Etiquetas 👷
+- **Archivo**: [sprint-12-history-tags-fixes.md](./sprint-12-history-tags-fixes.md)
+- **Descripción**: Solución de problemas con el historial de cambios y el sistema de etiquetado.
+- **Características principales**:
+  - Corrección del texto "(Texto Sugerido)" en el historial de cambios
+  - Solución al problema de etiquetas que no se guardaban en la base de datos
+  - Mejora del feedback visual al añadir/eliminar etiquetas
+  - Implementación de logs detallados para debugging
+  - Tests unitarios para validar las correcciones
+
 ## Sprints Completados
 
 ### Sprint 10: Flujo de revisión y feedback ✅
