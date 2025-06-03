@@ -411,8 +411,8 @@ export default function Home() {
               copyId: editingCopy.id,
               userId: currentUser?.id || 'anonymous',
               userName: currentUser?.username || 'Sistema',
-              previousText: editingCopy.text,
-              newText: data.text,
+              previousText: editingCopy.text || '[Sin texto previo]',  // Garantizar valor válido
+              newText: data.text || '[Sin texto nuevo]', // Garantizar valor válido
               createdAt: new Date(),
               comments: 'Actualización manual'
             } as CopyHistory
@@ -926,8 +926,35 @@ export default function Home() {
                     console.log('Agregando comentario:', { copyId, comment });
                   }}
                   onTagsChange={(copyId, tags) => {
-                    // Implementar lógica para actualizar etiquetas si es necesario
-                    console.log('Actualizando etiquetas:', { copyId, tags });
+                    console.log('🏷️ Actualizando etiquetas en estado local:', { copyId, tags });
+                    
+                    // Solo actualizamos el estado local del editingCopy para que
+                    // cuando se guarde con el botón "Actualizar", se incluyan las etiquetas
+                    if (editingCopy && editingCopy.id === copyId) {
+                      // Actualizar el objeto editingCopy con las nuevas etiquetas
+                      setEditingCopy(prev => ({
+                        ...prev!,
+                        tags: tags
+                      }));
+                      console.log('✅ Etiquetas actualizadas en el estado local, pendientes de guardar');
+                      toast({
+                        title: "Etiquetas listas",
+                        description: "Las etiquetas se guardarán al hacer clic en Actualizar",
+                        status: "info",
+                        duration: 2000,
+                        isClosable: true,
+                        position: "bottom-right"
+                      });
+                    } else {
+                      console.error('❌ No se pudo actualizar el estado local de etiquetas:', copyId);
+                      toast({
+                        title: "Error",
+                        description: "No se pudieron actualizar las etiquetas",
+                        status: "error",
+                        duration: 3000,
+                        isClosable: true,
+                      });
+                    }
                   }}
                   onCancel={cancelEdit}
                   initialValues={editingCopy || {}}
