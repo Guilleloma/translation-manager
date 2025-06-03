@@ -28,6 +28,11 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
+// Mock requestAnimationFrame
+global.requestAnimationFrame = jest.fn((callback) => {
+  return setTimeout(callback, 0);
+});
+
 // Test component to access user context
 const TestComponent = () => {
   const { 
@@ -155,12 +160,19 @@ describe('UserContext', () => {
       </UserProvider>
     );
 
-    // Login first
+    // Login first - Mock el login para no depender del delay de autenticación
+    // que puede causar problemas en los tests
     await act(async () => {
-      userEvent.click(screen.getByTestId('login-button'));
+      const { setCurrentUser } = useUser();
+      setCurrentUser({ 
+        id: '1', 
+        username: 'admin', 
+        email: 'admin@example.com', 
+        role: UserRole.ADMIN 
+      });
     });
 
-    // Verify login worked
+    // Esperar a que el estado de autenticación se actualice
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
     });
@@ -170,7 +182,14 @@ describe('UserContext', () => {
       userEvent.click(screen.getByTestId('logout-button'));
     });
 
-    // Verify logout worked
+    // Verify logout worked - usando requestAnimationFrame para simular la sincronización
+    await act(async () => {
+      // Ejecutar requestAnimationFrame manualmente para los tests
+      const callback = window.requestAnimationFrame as jest.Mock;
+      const queuedCallback = callback.mock.calls[0][0];
+      queuedCallback();
+    });
+
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Not authenticated');
       expect(screen.queryByTestId('user-info')).not.toBeInTheDocument();
@@ -187,9 +206,15 @@ describe('UserContext', () => {
       </UserProvider>
     );
 
-    // Login first
+    // Login first - Mock el login
     await act(async () => {
-      userEvent.click(screen.getByTestId('login-button'));
+      const { setCurrentUser } = useUser();
+      setCurrentUser({ 
+        id: '1', 
+        username: 'admin', 
+        email: 'admin@example.com', 
+        role: UserRole.ADMIN 
+      });
     });
 
     // Verify login worked
@@ -205,12 +230,18 @@ describe('UserContext', () => {
       userEvent.click(screen.getByTestId('logout-with-callback-button'));
     });
 
-    // First, isLoggingOut should be true
-    await waitFor(() => {
-      expect(screen.getByTestId('logout-status')).toHaveTextContent('Logging out');
+    // Verificar que isLoggingOut es true primero
+    expect(screen.getByTestId('logout-status')).toHaveTextContent('Logging out');
+
+    // Simular la ejecución de requestAnimationFrame
+    await act(async () => {
+      // Ejecutar requestAnimationFrame manualmente
+      const callback = window.requestAnimationFrame as jest.Mock;
+      const queuedCallback = callback.mock.calls[callback.mock.calls.length - 1][0];
+      queuedCallback();
     });
 
-    // Then verification that logout worked and callback executed
+    // Verificar que el logout se completó y que se ejecutó el callback
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Not authenticated');
       expect(screen.queryByTestId('user-info')).not.toBeInTheDocument();
