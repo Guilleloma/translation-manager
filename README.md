@@ -13,9 +13,11 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - **Soporte completo para 6 idiomas**: Español, Inglés, Portugués, Francés, Italiano y Alemán en toda la aplicación.
 - **Vista de tabla por idiomas**: Visualización clara de todos los copys organizados por slug e idioma.
 - **Creación y edición intuitiva**: Interfaz optimizada para trabajar eficientemente con traducciones.
+- **Sistema de etiquetado (tags)**: Permite categorizar y filtrar copys mediante etiquetas personalizadas con persistencia en la base de datos.
 - **Detección de conflictos de slug**: Sistema de alerta visual (⚠️) que muestra posibles conflictos en la estructura JSON cuando un slug raíz ('button') colisiona con slugs anidados ('button.crear').
 - **Persistencia con MongoDB**: Almacenamiento de datos en MongoDB para mayor robustez y escalabilidad.
 - **Sistema de asignación mejorado**: Interfaz optimizada para asignar copys a traductores por idioma.
+- **Historial de cambios detallado**: Seguimiento completo de modificaciones para cada copy.
 
 ---
 

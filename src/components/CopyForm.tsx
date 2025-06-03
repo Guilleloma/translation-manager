@@ -45,12 +45,12 @@ interface CopyFormProps {
   onTagsChange?: (copyId: string, tags: CopyTag[]) => void;
 }
 
-export const CopyForm: React.FC<CopyFormProps> = ({ 
-  existingCopys, 
-  onSave, 
-  onCancel, 
-  initialValues = {}, 
-  isEditing = false, 
+export const CopyForm: React.FC<CopyFormProps> = ({
+  existingCopys,
+  onSave,
+  onCancel,
+  initialValues = {},
+  isEditing = false,
   onLanguageChange,
   onStatusChange,
   onAddComment,
@@ -71,6 +71,9 @@ export const CopyForm: React.FC<CopyFormProps> = ({
   // Estados para las nuevas funcionalidades del Sprint 10
   const [activeTab, setActiveTab] = useState(0);
   
+  // Estado local para las etiquetas
+  const [localTags, setLocalTags] = useState<string[]>(initialValues.tags || []);
+
   // Log para debugging
   console.log('Rendering CopyForm with initialValues:', initialValues);
 
@@ -145,7 +148,11 @@ export const CopyForm: React.FC<CopyFormProps> = ({
         text: text.trim(),
         slug: slug.trim() || slugify(text.trim()), // Si no hay slug, generar uno a partir del texto
         language,
+        // Usar las etiquetas del estado local que se han ido modificando
+        tags: localTags
       };
+      
+      console.log('🏷️ [CopyForm] Enviando datos con tags:', copyData);
       
       // Simular una pequeña demora para mostrar el indicador de carga
       // En una aplicación real, esto sería una llamada a la API
@@ -206,9 +213,12 @@ export const CopyForm: React.FC<CopyFormProps> = ({
   };
   
   // Manejar cambio de etiquetas
-  const handleTagsChange = (copyId: string, tags: CopyTag[]) => {
+  const handleTagsChange = (copyId: string, tags: string[]) => {
+    // Actualizar el estado local de etiquetas
+    setLocalTags(tags);
+    
+    // Propagar el cambio al componente padre
     if (onTagsChange) {
-      console.log(`Updating tags for copy ${copyId}:`, tags);
       onTagsChange(copyId, tags);
     }
   };
@@ -382,7 +392,11 @@ export const CopyForm: React.FC<CopyFormProps> = ({
               <TabPanel p={0}>
                 {onTagsChange && (
                   <TagManager
-                    copy={initialValues as Copy}
+                    copy={{
+                      ...initialValues as Copy,
+                      id: initialValues.id,
+                      tags: localTags, // Usar las etiquetas del estado local
+                    }}
                     onTagsChange={handleTagsChange}
                   />
                 )}

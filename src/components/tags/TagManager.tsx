@@ -27,9 +27,12 @@ import { UserRole } from '../../types/user';
 
 interface TagManagerProps {
   copy: Copy;
-  onTagsChange: (copyId: string, tags: CopyTag[]) => void;
+  // Esta función ahora solo actualizará el estado local del formulario padre,
+  // no guardará directamente en la base de datos
+  onTagsChange: (copyId: string, tags: string[]) => void;
+  onFilterChange?: (selectedTags: string[]) => void;
   isFilterMode?: boolean;
-  onFilterChange?: (tags: CopyTag[]) => void;
+  selectedFilterTags?: string[];
 }
 
 /**
@@ -45,25 +48,36 @@ export const TagManager: React.FC<TagManagerProps> = ({
   copy,
   onTagsChange,
   isFilterMode = false,
-  onFilterChange
+  onFilterChange,
+  selectedFilterTags = []
 }) => {
   const { currentUser } = useUser();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [tags, setTags] = useState<CopyTag[]>(copy?.tags || []);
-  const [selectedFilterTags, setSelectedFilterTags] = useState<CopyTag[]>([]);
+  const [tags, setTags] = useState<CopyTag[]>(Array.isArray(copy?.tags) ? copy.tags : []);
+  const [selectedFilterTagsState, setSelectedFilterTags] = useState<string[]>(selectedFilterTags);
   const toast = useToast();
   
-  // Log para debugging
-  console.log('Rendering TagManager for copy:', copy?.id, 'with tags:', tags);
+  // Log simplificado solo si hay etiquetas
+  if (copy?.tags && Array.isArray(copy.tags) && copy.tags.length > 0) {
+    console.log(`🏷️ [TagManager] Copy ${copy.id} tiene ${copy.tags.length} etiquetas: ${copy.tags.join(', ')}`);
+  }
 
-  // Actualizar tags cuando cambia el copy
+  /**
+   * Actualizar tags cuando cambia el copy
+   * Este efecto garantiza que el estado local de tags esté sincronizado con los del copy
+   */
   useEffect(() => {
-    if (copy?.tags) {
-      setTags(copy.tags);
+    // Verificar si copy existe y tiene tags válidos
+    if (copy) {
+      // Asegurar que los tags sean siempre un array
+      const validTags = Array.isArray(copy.tags) ? copy.tags : [];
+      console.log(`🔄 [TagManager] Sincronizando etiquetas para copy ${copy.id}:`, validTags);
+      setTags(validTags);
     } else {
+      console.log('🔄 [TagManager] No hay copy o tags definidos, usando array vacío');
       setTags([]);
     }
-  }, [copy]);
+  }, [copy, copy?.tags]); // Añadido copy?.tags para detectar cambios en las etiquetas
 
   // Verificar si el usuario puede editar etiquetas
   const canEditTags = () => {
@@ -77,59 +91,74 @@ export const TagManager: React.FC<TagManagerProps> = ({
     ].includes(currentUser.role);
   };
 
-  // Manejar la adición de una etiqueta
-  const handleAddTag = (tag: string) => {
-    if (!canEditTags() && !isFilterMode) {
-      toast({
-        title: 'Permiso denegado',
-        description: 'No tienes permisos para añadir etiquetas',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    
+  /**
+   * Manejar la adición de una nueva etiqueta
+   * - En modo filtro: añade la etiqueta a los filtros
+   * - En modo edición: añade la etiqueta al estado local del componente
+   */
+  const handleAddTag = (newTag: string) => {
     if (isFilterMode) {
-      // Modo filtro
-      if (!selectedFilterTags.includes(tag)) {
-        const newFilterTags = [...selectedFilterTags, tag];
-        setSelectedFilterTags(newFilterTags);
-        if (onFilterChange) {
-          onFilterChange(newFilterTags);
-        }
+      // Modo filtro - añadir a los filtros seleccionados
+      const newFilterTags = [...selectedFilterTagsState, newTag];
+      setSelectedFilterTags(newFilterTags);
+      if (onFilterChange) {
+        onFilterChange(newFilterTags);
       }
     } else {
-      // Modo edición
-      if (!tags.includes(tag)) {
-        const newTags = [...tags, tag];
-        setTags(newTags);
-        onTagsChange(copy.id, newTags);
-        
+      // Verificar permisos
+      if (!canEditTags()) {
         toast({
-          title: 'Etiqueta añadida',
-          description: `Se ha añadido la etiqueta "${tag}"`,
-          status: 'success',
+          title: 'Permiso denegado',
+          description: 'No tienes permisos para añadir etiquetas',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      // Verificar si la etiqueta ya existe
+      if (tags.includes(newTag)) {
+        toast({
+          title: 'Etiqueta duplicada',
+          description: `La etiqueta "${newTag}" ya existe en este copy`,
+          status: 'warning',
           duration: 2000,
           isClosable: true,
         });
+        return;
       }
+      
+      // Modo edición - añadir al estado local (no a la BD todavía)
+      console.log(`🏷️ [TagManager] Añadiendo etiqueta "${newTag}" al estado local`);
+      
+      // Crear un nuevo array con la etiqueta añadida
+      const newTags = [...tags, newTag];
+      
+      // Actualizar estado local inmediatamente para mejor UI
+      setTags(newTags);
+      
+      // Notificar al padre del cambio en el estado local
+      // Esto NO guarda en la BD, solo actualiza el estado del formulario padre
+      onTagsChange(copy.id, newTags);
+      
+      // Mostrar feedback visual
+      toast({
+        title: 'Etiqueta añadida',
+        description: `Se ha añadido la etiqueta "${newTag}" (Pendiente de guardar)`,
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
     }
   };
 
-  // Manejar la eliminación de una etiqueta
+  /**
+   * Manejar la eliminación de una etiqueta
+   * - En modo filtro: actualiza selectedFilterTags para quitar ese filtro
+   * - En modo edición: elimina la etiqueta del estado local
+   */
   const handleRemoveTag = (tag: string) => {
-    if (!canEditTags() && !isFilterMode) {
-      toast({
-        title: 'Permiso denegado',
-        description: 'No tienes permisos para eliminar etiquetas',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    
     if (isFilterMode) {
       // Modo filtro
       const newFilterTags = selectedFilterTags.filter(t => t !== tag);
@@ -138,15 +167,36 @@ export const TagManager: React.FC<TagManagerProps> = ({
         onFilterChange(newFilterTags);
       }
     } else {
-      // Modo edición
+      // Verificar permisos
+      if (!canEditTags()) {
+        toast({
+          title: 'Permiso denegado',
+          description: 'No tienes permisos para eliminar etiquetas',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      // Modo edición - solo actualizar estado local
+      console.log(`🏷️ [TagManager] Eliminando etiqueta "${tag}" del estado local`);
+      
+      // Crear nuevo array de tags sin la etiqueta eliminada
       const newTags = tags.filter(t => t !== tag);
+      
+      // Actualizar estado local inmediatamente para mejor UI
       setTags(newTags);
+      
+      // Notificar al padre del cambio en el estado local
+      // Esto NO guarda en la BD, solo actualiza el estado del formulario padre
       onTagsChange(copy.id, newTags);
       
+      // Mostrar confirmación visual
       toast({
         title: 'Etiqueta eliminada',
-        description: `Se ha eliminado la etiqueta "${tag}"`,
-        status: 'info',
+        description: `Se ha eliminado la etiqueta "${tag}" (Pendiente de guardar)`,
+        status: 'success',
         duration: 2000,
         isClosable: true,
       });

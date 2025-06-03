@@ -60,13 +60,17 @@ export async function PATCH(
     console.log('🔍 ID recibido:', id);
     
     const body = await request.json();
-    const { slug, text, language, status, assignedTo, reviewedBy, approvedBy, updateAllLanguages, metadata } = body;
+    const { slug, text, language, status, assignedTo, reviewedBy, approvedBy, updateAllLanguages, metadata, tags } = body;
+    
+    // Añadir logs para ver si llegan los tags
+    console.log('🏷️ Tags recibidos en la API:', tags);
     
     // Crear log para debugging
     console.log(`🔧 PATCH /api/copys/${id}:`, { 
       slug, 
       updateAllLanguages, 
-      metadata, 
+      metadata,
+      tags: tags ? `[${tags.length} etiquetas]` : 'ninguna', 
       bodyKeys: Object.keys(body) 
     });
     
@@ -350,6 +354,12 @@ export async function PATCH(
     if (reviewedBy !== undefined) updateData.reviewedBy = reviewedBy;
     if (approvedBy !== undefined) updateData.approvedBy = approvedBy;
     if (slug !== undefined) updateData.slug = slug;
+    // Añadir soporte para la actualización de tags
+    if (tags !== undefined) {
+      // Asegurar que tags sea un array
+      updateData.tags = Array.isArray(tags) ? tags : [];
+      console.log('🏷️ Actualizando tags en la base de datos:', updateData.tags);
+    }
     
     updateData.updatedAt = new Date();
     

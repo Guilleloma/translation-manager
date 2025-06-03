@@ -93,18 +93,39 @@ class ApiService {
   async updateDocument<T extends { id: string }>(entity: Entity, data: T): Promise<T | null> {
     try {
       console.log(`[ApiService] Actualizando ${entity} ${data.id}`);
+      console.log(`[ApiService] Datos para actualizar:`, JSON.stringify(data, null, 2));
       
-      const response = await fetch(this.apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'update',
-          entity,
-          data
-        })
-      });
+      let response;
+      
+      // Determinar si usar el endpoint específico o el genérico
+      if (entity === 'copy') {
+        // Para copies, usar el endpoint específico /api/copys/[id]
+        const endpoint = `/api/copys/${data.id}`;
+        console.log(`[ApiService] Usando endpoint específico para copies: ${endpoint}`);
+        
+        response = await fetch(endpoint, {
+          method: 'PATCH', // PATCH es el método correcto para actualizaciones parciales
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+      } else {
+        // Para otras entidades, seguir usando el endpoint genérico
+        console.log(`[ApiService] Usando endpoint genérico: ${this.apiUrl}`);
+        
+        response = await fetch(this.apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'update',
+            entity,
+            data
+          })
+        });
+      }
       
       if (!response.ok) {
         throw new Error(`Error HTTP: ${response.status}`);
