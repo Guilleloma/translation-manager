@@ -265,6 +265,15 @@ Translation Manager es una herramienta web interna para gestionar traducciones d
 - 🔄 Reportes de cobertura de pruebas
 - 🔄 Pruebas de regresión visual
 
+### Sprint 12: Corrección de Lógica de Asignación de Copys ✅
+- ✅ Corregida lógica de filtrado para mostrar copys pendientes de traducción
+  - ✅ Al seleccionar un idioma distinto al español, se muestran los copys sin traducción en ese idioma
+  - ✅ Columna "Texto" renombrada a "Texto ES" para mostrar siempre el texto en español como referencia
+  - ✅ Creación automática de nuevos copys al asignar traducciones inexistentes
+- ✅ Tests unitarios para validar la nueva lógica de asignación
+  - ✅ Pruebas para verificar el filtrado correcto de copys pendientes
+  - ✅ Pruebas para validar la visualización del texto en español como referencia
+
 ### Sprint 13: Versionado de traducciones ⏳
 - ⏳ Sistema de etiquetado de versiones para traducciones
   - ⏳ Crear releases de traducciones
