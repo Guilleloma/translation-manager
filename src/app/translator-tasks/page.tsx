@@ -385,7 +385,7 @@ export default function UserTasks() {
       return copy;
     });
     
-    // Preparar los datos para enviar a la API
+    // Preparar los datos para enviar a la API - solo campos necesarios
     const copyToUpdate = updatedCopys.find(copy => copy.id === editingCopy.id);
     
     if (!copyToUpdate) {
@@ -393,20 +393,31 @@ export default function UserTasks() {
       return;
     }
     
-    console.log('📤 Enviando actualización a la API:', {
-      id: copyToUpdate.id,
+    // Crear objeto con solo los campos necesarios para la actualización
+    const updateData = {
       status: copyToUpdate.status,
-      text: copyToUpdate.text.substring(0, 30) + '...'
+      text: copyToUpdate.text,
+      ...(copyToUpdate.completedAt && { completedAt: copyToUpdate.completedAt }),
+      ...(copyToUpdate.reviewedAt && { reviewedAt: copyToUpdate.reviewedAt }),
+      ...(copyToUpdate.reviewedBy && { reviewedBy: copyToUpdate.reviewedBy }),
+      ...(copyToUpdate.history && { history: copyToUpdate.history })
+    };
+    
+    console.log('📤 Enviando actualización a la API:', {
+      id: editingCopy.id,
+      status: updateData.status,
+      text: updateData.text ? updateData.text.substring(0, 30) + '...' : '',
+      fieldsIncluded: Object.keys(updateData)
     });
     
     try {
       // Llamar a la API para actualizar el copy
       const response = await fetch(`/api/copys/${editingCopy.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(copyToUpdate),
+        body: JSON.stringify(updateData),
       });
       
       const result = await response.json();

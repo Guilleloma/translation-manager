@@ -60,7 +60,7 @@ export async function PATCH(
     console.log('🔍 ID recibido:', id);
     
     const body = await request.json();
-    const { slug, text, language, status, assignedTo, reviewedBy, approvedBy, updateAllLanguages, metadata, tags } = body;
+    const { slug, text, language, status, assignedTo, reviewedBy, approvedBy, updateAllLanguages, metadata, tags, completedAt, reviewedAt, approvedAt, history } = body;
     
     // Añadir logs para ver si llegan los tags
     console.log('🏷️ Tags recibidos en la API:', tags);
@@ -354,6 +354,12 @@ export async function PATCH(
     if (reviewedBy !== undefined) updateData.reviewedBy = reviewedBy;
     if (approvedBy !== undefined) updateData.approvedBy = approvedBy;
     if (slug !== undefined) updateData.slug = slug;
+    // Añadir soporte para campos de fecha
+    if (completedAt !== undefined) updateData.completedAt = completedAt;
+    if (reviewedAt !== undefined) updateData.reviewedAt = reviewedAt;
+    if (approvedAt !== undefined) updateData.approvedAt = approvedAt;
+    // Añadir soporte para historial
+    if (history !== undefined) updateData.history = history;
     // Añadir soporte para la actualización de tags
     if (tags !== undefined) {
       // Asegurar que tags sea un array
