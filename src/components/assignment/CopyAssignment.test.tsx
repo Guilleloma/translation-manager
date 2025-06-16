@@ -14,6 +14,16 @@ jest.mock('../../services/dataService', () => ({
   }
 }));
 
+// Mock del useToast para evitar errores de renderizado
+jest.mock('@chakra-ui/react', () => {
+  const originalModule = jest.requireActual('@chakra-ui/react');
+  return {
+    __esModule: true,
+    ...originalModule,
+    useToast: () => jest.fn(),
+  };
+});
+
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
   <ChakraProvider>
     <UserProvider>
@@ -31,7 +41,7 @@ describe('CopyAssignment - Fixed Logic', () => {
       slug: 'welcome.title',
       text: 'Bienvenido',
       language: 'es',
-      status: 'completed',
+      status: 'approved',
       createdAt: new Date(),
       updatedAt: new Date(),
       needsSlugReview: false
@@ -41,7 +51,7 @@ describe('CopyAssignment - Fixed Logic', () => {
       slug: 'button.save',
       text: 'Guardar',
       language: 'es',
-      status: 'completed',
+      status: 'approved',
       createdAt: new Date(),
       updatedAt: new Date(),
       needsSlugReview: false
@@ -69,7 +79,7 @@ describe('CopyAssignment - Fixed Logic', () => {
       </TestWrapper>
     );
 
-    const languageSelect = screen.getByDisplayValue('');
+    const languageSelect = screen.getByRole('combobox', { name: /idioma/i });
     fireEvent.change(languageSelect, { target: { value: 'en' } });
 
     await waitFor(() => {
@@ -89,7 +99,7 @@ describe('CopyAssignment - Fixed Logic', () => {
       </TestWrapper>
     );
 
-    const languageSelect = screen.getByDisplayValue('');
+    const languageSelect = screen.getByRole('combobox', { name: /idioma/i });
     fireEvent.change(languageSelect, { target: { value: 'fr' } });
 
     await waitFor(() => {
@@ -110,7 +120,7 @@ describe('CopyAssignment - Fixed Logic', () => {
         slug: 'button.save',
         text: 'Save',
         language: 'en',
-        status: 'completed',
+        status: 'approved',
         createdAt: new Date(),
         updatedAt: new Date(),
         needsSlugReview: false
@@ -123,7 +133,7 @@ describe('CopyAssignment - Fixed Logic', () => {
       </TestWrapper>
     );
 
-    const languageSelect = screen.getByDisplayValue('');
+    const languageSelect = screen.getByRole('combobox', { name: /idioma/i });
     fireEvent.change(languageSelect, { target: { value: 'en' } });
 
     await waitFor(() => {
@@ -142,7 +152,7 @@ describe('CopyAssignment - Fixed Logic', () => {
       </TestWrapper>
     );
 
-    const languageSelect = screen.getByDisplayValue('');
+    const languageSelect = screen.getByRole('combobox', { name: /idioma/i });
     fireEvent.change(languageSelect, { target: { value: 'en' } });
 
     await waitFor(() => {

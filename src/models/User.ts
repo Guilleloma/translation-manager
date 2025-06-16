@@ -55,7 +55,8 @@ const UserSchema: Schema = new Schema({
       ret.id = ret._id;
       delete ret._id;
       delete ret.__v;
-      delete ret.password; // No incluir password en respuestas JSON
+      // Mantener la contraseña en la respuesta JSON para que esté disponible en la interfaz de administración
+      // En un entorno de producción, esto debería manejarse con más seguridad
       return ret;
     }
   }

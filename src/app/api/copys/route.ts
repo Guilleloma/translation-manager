@@ -14,22 +14,41 @@ export async function GET(request: NextRequest) {
     await connectDB();
     
     const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const skip = (page - 1) * limit;
+    
+    // Obtener parámetros de filtro
     const language = searchParams.get('language');
+    const languages = searchParams.getAll('language'); // Obtener todos los parámetros language
     const status = searchParams.get('status');
     const slug = searchParams.get('slug');
     const assignedTo = searchParams.get('assignedTo');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const search = searchParams.get('search');
     const needsSlugReview = searchParams.get('needsSlugReview');
+    const search = searchParams.get('search');
     
     let query: any = {};
     
     // Filtros
-    if (language) query.language = language;
+    if (languages.length > 0) {
+      // Si hay múltiples idiomas, usar $in operator
+      query.language = { $in: languages };
+      console.log(`🌐 [API] Filtrando por múltiples idiomas: ${languages.join(', ')}`);
+    } else if (language) {
+      // Si hay un solo idioma, usar igualdad directa
+      query.language = language;
+      console.log(`🌐 [API] Filtrando por idioma único: ${language}`);
+    }
+    
     if (status) query.status = status;
     if (slug) query.slug = slug;
     if (assignedTo) query.assignedTo = assignedTo;
+    
+    // 🔍 LOG DE DEPURACIÓN: Ver qué se está consultando
+    if (assignedTo) {
+      console.log(`🔍 [API] Consultando copys asignados a: ${assignedTo}`);
+      console.log(`🔍 [API] Query completa:`, JSON.stringify(query, null, 2));
+    }
     
     // Filtrar por slugs que necesitan revisión
     if (needsSlugReview === 'true') {
@@ -48,8 +67,6 @@ export async function GET(request: NextRequest) {
     }
     
     // Paginación
-    const skip = (page - 1) * limit;
-    
     const [copys, totalCount] = await Promise.all([
       Copy.find(query)
         .populate('assignedTo', 'username email')
@@ -60,6 +77,21 @@ export async function GET(request: NextRequest) {
         .limit(limit),
       Copy.countDocuments(query)
     ]);
+    
+    // 🔍 LOG DE DEPURACIÓN: Ver resultados detallados
+    if (assignedTo) {
+      console.log(`🔍 [API] Copys encontrados: ${copys.length}`);
+      copys.forEach((copy, index) => {
+        console.log(`  Copy ${index + 1}:`, {
+          id: copy._id,
+          slug: copy.slug,
+          language: copy.language,
+          status: copy.status,
+          assignedTo: copy.assignedTo ? (copy.assignedTo as any)._id || copy.assignedTo : null,
+          assignedToUsername: copy.assignedTo ? (copy.assignedTo as any).username : null
+        });
+      });
+    }
     
     const totalPages = Math.ceil(totalCount / limit);
     
@@ -164,7 +196,7 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({
           success: true,
-          data: updatedCopy,
+          copy: JSON.parse(JSON.stringify(updatedCopy)), // Asegurar serialización correcta
           message: 'Copy actualizado exitosamente',
           wasUpdated: true
         });
@@ -190,6 +222,8 @@ export async function POST(request: NextRequest) {
       slug: body.slug,
       language: body.language,
       status: body.status || 'not_assigned',
+      assignedTo: body.assignedTo, // Añadir campo assignedTo
+      assignedAt: body.assignedAt, // Añadir campo assignedAt
       createdAt: new Date(),
       updatedAt: new Date(),
       history: body.history || [],
@@ -201,6 +235,8 @@ export async function POST(request: NextRequest) {
     console.log('💾 COPY A GUARDAR:', {
       slug: newCopy.slug,
       language: newCopy.language,
+      assignedTo: newCopy.assignedTo, // Log del campo assignedTo
+      status: newCopy.status,
       needsSlugReview: newCopy.needsSlugReview,
       translationGroupId: newCopy.translationGroupId,
       isOriginalText: newCopy.isOriginalText,
@@ -212,6 +248,7 @@ export async function POST(request: NextRequest) {
       id: savedCopy._id,
       slug: savedCopy.slug,
       language: savedCopy.language,
+      assignedTo: savedCopy.assignedTo, // Log del campo assignedTo
       needsSlugReview: savedCopy.needsSlugReview,
       translationGroupId: savedCopy.translationGroupId,
       isOriginalText: savedCopy.isOriginalText
@@ -220,7 +257,7 @@ export async function POST(request: NextRequest) {
     console.log('🚀 ===== API POST /api/copys - FIN EXITOSO =====');
     return NextResponse.json({
       success: true,
-      data: savedCopy,
+      copy: JSON.parse(JSON.stringify(savedCopy)), // Asegurar serialización correcta
       message: 'Copy creado exitosamente'
     });
   } catch (error: any) {
