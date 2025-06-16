@@ -158,154 +158,228 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
   };
 
   /**
- * Asignar copys seleccionados al traductor
- * Implementa un sistema de feedback visual durante el proceso de asignación
- * y maneja mejor las notificaciones para evitar saturar la interfaz
- */
-const handleAssign = async () => {
-  // Obtener el usuario seleccionado
-  const translator = users.find(user => user.id === selectedTranslator);
-  const totalCopys = selectedCopys.length;
-  
-  // Validar selecciones antes de proceder
-  if (!selectedTranslator || selectedCopys.length === 0) {
-    toast({
-      title: 'Error',
-      description: 'Selecciona un traductor y al menos un copy para asignar',
-      status: 'error',
-      duration: 3000,
-      isClosable: true,
-    });
-    return;
-  }
-  
-  // Activar estado de carga
-  setIsAssigning(true);
-  setProgress(0);
-  
-  // Crear toast de progreso
-  toastIdRef.current = toast({
-    title: 'Asignando copys',
-    description: `0/${totalCopys} copys asignados a ${translator?.username}`,
-    status: 'info',
-    duration: null,
-    isClosable: false,
-    position: 'bottom-right',
-  });
-  
-  try {
-    // Asignar cada copy seleccionado
-    for (let i = 0; i < selectedCopys.length; i++) {
-      const copyId = selectedCopys[i];
-      const pendingCopy = pendingCopys.find(copy => copy.id === copyId);
-      
-      if (pendingCopy) {
-        // Verificar si ya existe un copy con el mismo slug e idioma
-        const existingCopy = copys.find(c => 
-          c.slug === pendingCopy.slug && 
-          c.language === pendingCopy.language
-        );
+   * Asignar copys seleccionados al traductor
+   * Implementa un sistema de feedback visual durante el proceso de asignación
+   * y maneja mejor las notificaciones para evitar saturar la interfaz
+   */
+  const handleAssign = async () => {
+    // Obtener el usuario seleccionado
+    const translator = users.find(user => user.id === selectedTranslator);
+    const totalCopys = selectedCopys.length;
 
-        if (existingCopy) {
-          // Si existe, actualizar el copy existente
-          console.log(`[CopyAssignment] Actualizando copy existente: ${existingCopy.id} (${existingCopy.slug} - ${existingCopy.language})`);
-          updateCopy(existingCopy.id, {
-            assignedTo: selectedTranslator,
-            assignedAt: new Date(),
-            status: 'assigned',
-            updatedAt: new Date()
-          });
-        } else if (pendingCopy.needsTranslation) {
-          // Si no existe y necesita traducción, crear uno nuevo
-          console.log(`[CopyAssignment] Creando nuevo copy: ${pendingCopy.slug} (${pendingCopy.language})`);
-          const newCopy: Copy = {
-            id: `${pendingCopy.slug}_${pendingCopy.language}_${Date.now()}`,
-            slug: pendingCopy.slug,
-            language: pendingCopy.language,
-            text: pendingCopy.text || '[Texto pendiente de traducción]',
-            status: 'assigned',
-            assignedTo: selectedTranslator,
-            assignedAt: new Date(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            needsSlugReview: false,
-            history: [],
-            tags: [],
-            comments: []
-          };
-          
-          await dataService.addCopy(newCopy);
-        } else {
-          // Actualizar el copy existente (caso por si acaso)
-          console.log(`[CopyAssignment] Actualizando copy existente (caso alternativo): ${copyId}`);
-          updateCopy(copyId, {
-            assignedTo: selectedTranslator,
-            assignedAt: new Date(),
-            status: 'assigned',
-            updatedAt: new Date()
-          });
-        }
-      }
-      
-      // Actualizar progreso
-      const currentProgress = Math.round(((i + 1) / totalCopys) * 100);
-      setProgress(currentProgress);
-      
-      // Actualizar toast cada 10% o cada 50 copys para no saturar la UI
-      if (i % Math.max(Math.floor(totalCopys / 10), 1) === 0 || i === selectedCopys.length - 1) {
-        if (toastIdRef.current) {
-          toast.update(toastIdRef.current, {
-            description: `${i + 1}/${totalCopys} copys asignados a ${translator?.username} (${currentProgress}%)`,
-          });
-        }
-      }
-      
-      // Si hay muchos copys, añadir un pequeño retraso cada cierto número para permitir actualizaciones de UI
-      if (totalCopys > 100 && i % 50 === 0 && i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
+    // Validar selecciones antes de proceder
+    if (!selectedTranslator || selectedCopys.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Selecciona un traductor y al menos un copy para asignar',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
     }
-    
-    // Cerrar el toast de progreso
-    if (toastIdRef.current) {
-      toast.close(toastIdRef.current);
-    }
-    
-    // Mostrar mensaje de éxito
-    toast({
-      title: 'Copys asignados',
-      description: `${totalCopys} copys asignados a ${translator?.username}`,
-      status: 'success',
-      duration: 5000,
-      isClosable: true,
+
+    console.log(`🚀 [CopyAssignment] Iniciando asignación de ${totalCopys} copys a ${translator?.username} (ID: ${selectedTranslator})`);
+
+    // Activar estado de carga
+    setIsAssigning(true);
+    setProgress(0);
+
+    // Crear toast de progreso
+    toastIdRef.current = toast({
+      title: 'Asignando copys',
+      description: `0/${totalCopys} copys asignados a ${translator?.username}`,
+      status: 'info',
+      duration: null,
+      isClosable: false,
       position: 'bottom-right',
     });
-    
-    // Resetear selecciones
-    setSelectedCopys([]);
-    setSelectAll(false);
-  } catch (error) {
-    console.error('Error al asignar copys:', error);
-    
-    // Cerrar el toast de progreso en caso de error
-    if (toastIdRef.current) {
-      toast.close(toastIdRef.current);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      // Asignar cada copy seleccionado
+      for (let i = 0; i < selectedCopys.length; i++) {
+        const copyId = selectedCopys[i];
+        const pendingCopy = pendingCopys.find(copy => copy.id === copyId);
+        
+        if (pendingCopy) {
+          try {
+            // Verificar si ya existe un copy con el mismo slug e idioma
+            const existingCopy = copys.find(c => 
+              c.slug === pendingCopy.slug && 
+              c.language === pendingCopy.language
+            );
+
+            if (existingCopy) {
+              // Si existe, actualizar el copy existente
+              console.log(`🔄 [CopyAssignment] Actualizando copy existente: ${existingCopy.id} (${existingCopy.slug} - ${existingCopy.language})`);
+              updateCopy(existingCopy.id, {
+                assignedTo: selectedTranslator, // Asegurar que es un string con el ID
+                assignedAt: new Date(),
+                status: 'assigned',
+                updatedAt: new Date()
+              });
+              successCount++;
+            } else if (pendingCopy.needsTranslation) {
+              // Si no existe y necesita traducción, crear uno nuevo
+              console.log(`✨ [CopyAssignment] Creando nuevo copy: ${pendingCopy.slug} (${pendingCopy.language})`);
+              const newCopy: Copy = {
+                id: `${pendingCopy.slug}_${pendingCopy.language}_${Date.now()}`,
+                slug: pendingCopy.slug,
+                language: pendingCopy.language,
+                text: pendingCopy.text || '[Texto pendiente de traducción]',
+                status: 'assigned',
+                assignedTo: selectedTranslator, // Asegurar que es un string con el ID del usuario
+                assignedAt: new Date(),
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                needsSlugReview: false,
+                history: [],
+                tags: [],
+                comments: []
+              };
+              
+              console.log(`💾 [CopyAssignment] Datos del nuevo copy:`, {
+                id: newCopy.id,
+                slug: newCopy.slug,
+                language: newCopy.language,
+                assignedTo: newCopy.assignedTo,
+                status: newCopy.status
+              });
+              
+              // Intentar crear el copy y manejar errores específicos
+              try {
+                await dataService.addCopy(newCopy);
+                console.log(`✅ [CopyAssignment] Copy creado exitosamente: ${newCopy.id}`);
+                successCount++;
+              } catch (addError) {
+                console.error(`❌ [CopyAssignment] Error al crear copy ${newCopy.id}:`, addError);
+                errorCount++;
+                
+                // Si el error es por duplicado, intentar actualizar el copy existente
+                if (addError instanceof Error && addError.message.includes('Ya existe un copy')) {
+                  console.log(`🔄 [CopyAssignment] Copy duplicado detectado, intentando actualizar...`);
+                  // Buscar el copy existente y actualizarlo
+                  const existingDuplicateCopy = copys.find(c => 
+                    c.slug === pendingCopy.slug && 
+                    c.language === pendingCopy.language
+                  );
+                  
+                  if (existingDuplicateCopy) {
+                    updateCopy(existingDuplicateCopy.id, {
+                      assignedTo: selectedTranslator,
+                      assignedAt: new Date(),
+                      status: 'assigned',
+                      updatedAt: new Date()
+                    });
+                    console.log(`✅ [CopyAssignment] Copy duplicado actualizado: ${existingDuplicateCopy.id}`);
+                    successCount++;
+                    errorCount--; // Revertir el conteo de error
+                  }
+                }
+              }
+            } else {
+              // Actualizar el copy existente (caso por si acaso)
+              console.log(`🔄 [CopyAssignment] Actualizando copy existente (caso alternativo): ${copyId}`);
+              updateCopy(copyId, {
+                assignedTo: selectedTranslator, // Asegurar que es un string con el ID
+                assignedAt: new Date(),
+                status: 'assigned',
+                updatedAt: new Date()
+              });
+              successCount++;
+            }
+          } catch (copyError) {
+            console.error(`❌ [CopyAssignment] Error al procesar copy ${copyId}:`, copyError);
+            errorCount++;
+          }
+        }
+        
+        // Actualizar progreso
+        const currentProgress = Math.round(((i + 1) / totalCopys) * 100);
+        setProgress(currentProgress);
+        
+        // Actualizar toast cada 10% o cada 50 copys para no saturar la UI
+        if (i % Math.max(Math.floor(totalCopys / 10), 1) === 0 || i === selectedCopys.length - 1) {
+          if (toastIdRef.current) {
+            toast.update(toastIdRef.current, {
+              description: `${i + 1}/${totalCopys} copys procesados (${currentProgress}%) - ${successCount} exitosos, ${errorCount} errores`,
+            });
+          }
+        }
+        
+        // Si hay muchos copys, añadir un pequeño retraso cada cierto número para permitir actualizaciones de UI
+        if (totalCopys > 100 && i % 50 === 0 && i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+      
+      // Cerrar el toast de progreso
+      if (toastIdRef.current) {
+        toast.close(toastIdRef.current);
+      }
+      
+      // Mostrar mensaje de resultado
+      if (errorCount === 0) {
+        toast({
+          title: 'Copys asignados exitosamente',
+          description: `${successCount} copys asignados a ${translator?.username}`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          position: 'bottom-right',
+        });
+      } else if (successCount > 0) {
+        toast({
+          title: 'Asignación parcialmente exitosa',
+          description: `${successCount} copys asignados correctamente, ${errorCount} con errores. Revisa la consola para más detalles.`,
+          status: 'warning',
+          duration: 7000,
+          isClosable: true,
+          position: 'bottom-right',
+        });
+      } else {
+        toast({
+          title: 'Error en la asignación',
+          description: `No se pudo asignar ningún copy. ${errorCount} errores encontrados.`,
+          status: 'error',
+          duration: 7000,
+          isClosable: true,
+          position: 'bottom-right',
+        });
+      }
+      
+      console.log(`📊 [CopyAssignment] Resumen: ${successCount} exitosos, ${errorCount} errores de ${totalCopys} total`);
+      
+      // Resetear selecciones solo si hubo al menos un éxito
+      if (successCount > 0) {
+        setSelectedCopys([]);
+        setSelectAll(false);
+      }
+    } catch (error) {
+      console.error('❌ [CopyAssignment] Error general al asignar copys:', error);
+      
+      // Cerrar el toast de progreso en caso de error
+      if (toastIdRef.current) {
+        toast.close(toastIdRef.current);
+      }
+      
+      // Mostrar mensaje de error
+      toast({
+        title: 'Error al asignar copys',
+        description: 'Ha ocurrido un error durante la asignación. Por favor, inténtalo de nuevo.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      // Desactivar estado de carga
+      setIsAssigning(false);
+      setProgress(0);
     }
-    
-    // Mostrar mensaje de error
-    toast({
-      title: 'Error al asignar copys',
-      description: 'Ha ocurrido un error durante la asignación. Por favor, inténtalo de nuevo.',
-      status: 'error',
-      duration: 5000,
-      isClosable: true,
-    });
-  } finally {
-    // Desactivar estado de carga
-    setIsAssigning(false);
-    setProgress(0);
-  }
-};
+  };
 
   // Obtener nombre del idioma a partir del código
   const getLanguageName = (code: string) => {

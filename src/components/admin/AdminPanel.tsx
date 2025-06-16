@@ -400,6 +400,7 @@ export default function AdminPanel() {
                     <Th>ID</Th>
                     <Th>Usuario</Th>
                     <Th>Email</Th>
+                    <Th>Contraseña</Th>
                     <Th>Rol</Th>
                     <Th>Idiomas</Th>
                     <Th width="100px">Eliminar</Th>
@@ -411,6 +412,7 @@ export default function AdminPanel() {
                       <Td>{user.id}</Td>
                       <Td>{user.username}</Td>
                       <Td>{user.email}</Td>
+                      <Td>{user.password || '-'}</Td>
                       <Td>
                         <RoleSelector
                           user={user}

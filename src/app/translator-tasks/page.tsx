@@ -41,7 +41,8 @@ import {
 } from '@chakra-ui/react';
 import { SearchIcon, CheckIcon, CloseIcon } from '@chakra-ui/icons';
 import { useUser } from '../../context/UserContext';
-import { Copy } from '../../types/copy';
+import { Copy, CopyStatus } from '../../types/copy';
+import { Tooltip } from '@chakra-ui/react';
 
 /**
  * Página de tareas asignadas para traductores y revisores
@@ -68,45 +69,71 @@ export default function UserTasks() {
   const tableBgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   
-  // Simular carga de datos (en una app real, esto vendría de una API)
-  useEffect(() => {
-    // En este punto, cargaríamos los datos de la API
-    // Por ahora, simulamos utilizando localStorage
-    console.log(' Cargando copys desde localStorage...');
-    const storedCopys = localStorage.getItem('copys');
-    if (storedCopys) {
-      try {
-        const parsedCopys = JSON.parse(storedCopys);
-        setCopys(parsedCopys);
-        console.log(` Copys cargados desde localStorage: ${parsedCopys.length}`);
-      } catch (error) {
-        console.error(' Error al cargar copys:', error);
+  // Función para cargar copys asignados al usuario actual
+  const fetchAssignedCopys = async () => {
+    if (!currentUser) {
+      console.log('No hay usuario autenticado');
+      return;
+    }
+    
+    console.log(`🔄 Cargando copys asignados a ${currentUser.username} (ID: ${currentUser.id})`);
+    
+    try {
+      // Construir URL con parámetros de filtrado
+      const url = new URL('/api/copys', window.location.origin);
+      url.searchParams.append('assignedTo', currentUser.id);
+      if (currentUser.role === 'translator' && currentUser.languages && currentUser.languages.length > 0) {
+        currentUser.languages.forEach(lang => {
+          url.searchParams.append('language', lang);
+        });
+      }
+      
+      console.log(`🔍 Consultando API: ${url.toString()}`);
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.data)) {
+        // Convertir los datos de la API al tipo Copy correcto
+        const typedCopys: Copy[] = data.data.map((copy: any) => ({
+          ...copy,
+          status: copy.status as CopyStatus
+        }));
+        
+        setCopys(typedCopys);
+        console.log(`✅ Copys cargados desde API: ${typedCopys.length}`);
+      } else {
+        console.error('❌ Error al cargar copys:', data.error || 'Respuesta inválida');
         setCopys([]);
       }
+    } catch (error) {
+      console.error('❌ Error al cargar copys:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar las tareas asignadas',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setCopys([]);
     }
-  }, []);
+  };
+  
+  // Cargar copys al iniciar o cambiar de usuario
+  useEffect(() => {
+    fetchAssignedCopys();
+  }, [currentUser]);
   
   // Verificar si el usuario está autenticado y tiene un rol válido
   const isTranslator = currentUser?.role === 'translator';
   const isReviewer = currentUser?.role === 'reviewer';
   
-  if (!currentUser || (!isTranslator && !isReviewer)) {
-    return (
-      <Container maxW="container.xl" py={10}>
-        <Box textAlign="center" py={10} px={6}>
-          <Heading as="h2" size="xl">
-            Acceso Restringido
-          </Heading>
-          <Text mt={4} mb={8}>
-            Esta página es solo para traductores y revisores. Por favor, inicia sesión con una cuenta adecuada.
-          </Text>
-        </Box>
-      </Container>
-    );
-  }
-  
-  // Filtrar las tareas según el rol del usuario
+  // Filtrar las tareas según el rol del usuario (debe estar antes del return condicional)
   const userTasks = useMemo(() => {
+    if (!currentUser || (!isTranslator && !isReviewer)) {
+      return [];
+    }
+    
     console.log(` Filtrando tareas para usuario: ${currentUser.username} (ID: ${currentUser.id}, Rol: ${currentUser.role})`);
     
     // Determinar qué tareas mostrar según el rol
@@ -120,10 +147,49 @@ export default function UserTasks() {
       const possibleIds = [currentUser.id, `translator-${currentUser.id}`, currentUser.username];
       console.log('Posibles IDs del usuario actual:', possibleIds);
       
-      filteredTasks = copys.filter(copy => 
-        possibleIds.includes(copy.assignedTo) && 
-        copy.status === 'assigned'
-      );
+      // 🔍 LOG DE DEPURACIÓN: Ver qué contienen los copys cargados
+      console.log('🔍 Copys cargados para análisis:', copys.length);
+      copys.forEach((copy, index) => {
+        console.log(`  Copy ${index + 1}:`, {
+          slug: copy.slug,
+          language: copy.language,
+          status: copy.status,
+          assignedTo: copy.assignedTo,
+          assignedToType: typeof copy.assignedTo,
+          assignedToId: typeof copy.assignedTo === 'object' && copy.assignedTo ? 
+            (copy.assignedTo as any)._id || (copy.assignedTo as any).id : copy.assignedTo
+        });
+      });
+      
+      filteredTasks = copys.filter(copy => {
+        // Verificar si el copy tiene un assignedTo válido
+        if (!copy.assignedTo) {
+          return false;
+        }
+        
+        // IMPORTANTE: No filtrar estrictamente por status === 'assigned'
+        // Mostrar todos los copys asignados al usuario independientemente del estado
+        
+        // Manejar assignedTo como string o como objeto poblado
+        let assignedToId: string;
+        if (typeof copy.assignedTo === 'string') {
+          assignedToId = copy.assignedTo;
+        } else if (typeof copy.assignedTo === 'object' && copy.assignedTo) {
+          // Si es un objeto poblado, extraer el ID
+          assignedToId = (copy.assignedTo as any)._id || (copy.assignedTo as any).id;
+        } else {
+          return false;
+        }
+        
+        // Normalizar IDs para comparación (eliminar posibles prefijos o sufijos)
+        const normalizedAssignedId = assignedToId.toString().replace(/^translator-/, '');
+        const normalizedUserIds = possibleIds.map(id => id.toString().replace(/^translator-/, ''));
+        
+        const matches = normalizedUserIds.some(id => normalizedAssignedId.includes(id) || id.includes(normalizedAssignedId));
+        console.log(`🔍 Verificando copy "${copy.slug}": assignedToId="${assignedToId}", coincide=${matches}`);
+        
+        return matches;
+      });
     } else if (isReviewer) {
       // Para revisores: mostrar tareas traducidas pendientes de revisión
       console.log('Buscando tareas pendientes de revisión:');
@@ -151,15 +217,13 @@ export default function UserTasks() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(copy => 
-        copy.text.toLowerCase().includes(query) || 
-        copy.slug.toLowerCase().includes(query)
+        copy.slug.toLowerCase().includes(query) ||
+        copy.text.toLowerCase().includes(query)
       );
-      console.log(`Filtrado por búsqueda "${searchQuery}": ${result.length} tareas`);
     }
     
-    // Devolver el resultado filtrado
     return result;
-  }, [copys, currentUser, filterLanguage, filterStatus, searchQuery, isTranslator, isReviewer]);
+  }, [copys, currentUser, isTranslator, isReviewer, filterLanguage, filterStatus, searchQuery]);
   
   // Obtener los idiomas disponibles para el traductor
   const translatorLanguages = useMemo(() => {
@@ -167,17 +231,18 @@ export default function UserTasks() {
   }, [currentUser]);
   
   // Función para nombrar los idiomas
-  const getLanguageName = (code: string) => {
-    const languages = {
-      'es': 'Español',
-      'en': 'Inglés',
-      'fr': 'Francés',
-      'de': 'Alemán',
-      'it': 'Italiano',
-      'pt': 'Portugués'
-    };
+  const getLanguageName = (code: string | undefined) => {
+    if (!code) return 'Desconocido';
     
-    return languages[code as keyof typeof languages] || code;
+    switch (code) {
+      case 'es': return 'Español';
+      case 'en': return 'English';
+      case 'fr': return 'Français';
+      case 'de': return 'Deutsch';
+      case 'it': return 'Italiano';
+      case 'pt': return 'Português';
+      default: return code;
+    }
   };
   
   // Función para formatear la fecha
@@ -239,7 +304,8 @@ export default function UserTasks() {
   };
   
   // Función para guardar la traducción o revisión
-  const handleSaveTranslation = () => {
+  const handleSaveTranslation = async () => {
+    // Verificar que haya un texto y un copy para editar
     if (!editingCopy || !translationText.trim()) {
       toast({
         title: 'Error',
@@ -253,8 +319,20 @@ export default function UserTasks() {
       return;
     }
     
+    // Verificar que el usuario esté autenticado
+    if (!currentUser) {
+      toast({
+        title: 'Error de autenticación',
+        description: 'No se ha detectado un usuario autenticado. Por favor, inicia sesión nuevamente.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    
     // Determinar el nuevo estado según el rol del usuario
-    const newStatus = isReviewer ? 'reviewed' : 'translated';
+    const newStatus: CopyStatus = isReviewer ? 'reviewed' : 'translated';
     const actionName = isReviewer ? 'revisión' : 'traducción';
     
     console.log(` Guardando ${actionName} para: ${editingCopy.slug}`);
@@ -266,7 +344,7 @@ export default function UserTasks() {
       id: `history-${Date.now()}`,
       copyId: editingCopy.id,
       userId: currentUser.id,
-      userName: currentUser.username,
+      userName: currentUser.username || 'Usuario',
       previousStatus: editingCopy.status,
       newStatus: newStatus,
       createdAt: new Date(),
@@ -307,13 +385,51 @@ export default function UserTasks() {
       return copy;
     });
     
-    // Actualizar el estado
-    setCopys(updatedCopys);
+    // Preparar los datos para enviar a la API
+    const copyToUpdate = updatedCopys.find(copy => copy.id === editingCopy.id);
     
-    // En una app real, aquí haríamos una llamada a la API
-    // Por ahora, guardamos en localStorage
-    localStorage.setItem('copys', JSON.stringify(updatedCopys));
-    console.log(` Traducción guardada en localStorage`);
+    if (!copyToUpdate) {
+      console.error('❌ Error: No se encontró el copy actualizado en el estado local');
+      return;
+    }
+    
+    console.log('📤 Enviando actualización a la API:', {
+      id: copyToUpdate.id,
+      status: copyToUpdate.status,
+      text: copyToUpdate.text.substring(0, 30) + '...'
+    });
+    
+    try {
+      // Llamar a la API para actualizar el copy
+      const response = await fetch(`/api/copys/${editingCopy.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(copyToUpdate),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Copy actualizado exitosamente en la API');
+        // Actualizar el estado local con los datos actualizados
+        await fetchAssignedCopys();
+      } else {
+        console.error('❌ Error al actualizar copy en la API:', result.error);
+        throw new Error(result.error || 'Error al actualizar la traducción');
+      }
+    } catch (error) {
+      console.error('❌ Error en la llamada a la API:', error);
+      toast({
+        title: 'Error al guardar',
+        description: `No se pudo guardar la ${actionName}. Por favor, intenta nuevamente.`,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return; // Salir de la función sin cerrar el modal
+    }
     
     // Mostrar notificación de éxito
     toast({
@@ -331,6 +447,21 @@ export default function UserTasks() {
     setEditingCopy(null);
     setTranslationText('');
   };
+  
+  if (!currentUser || (!isTranslator && !isReviewer)) {
+    return (
+      <Container maxW="container.xl" py={10}>
+        <Box textAlign="center" py={10} px={6}>
+          <Heading as="h2" size="xl">
+            Acceso Restringido
+          </Heading>
+          <Text mt={4} mb={8}>
+            Esta página es solo para traductores y revisores. Por favor, inicia sesión con una cuenta adecuada.
+          </Text>
+        </Box>
+      </Container>
+    );
+  }
   
   return (
     <Container maxW="container.xl" py={10}>
@@ -447,7 +578,13 @@ export default function UserTasks() {
                       {getStatusName(task.status)}
                     </Badge>
                   </Td>
-                  <Td fontSize="sm">{formatDate(task.assignedAt)}</Td>
+                  <Td fontSize="sm">
+                    {task.assignedTo ? (
+                      typeof task.assignedTo === 'string' 
+                        ? task.assignedTo 
+                        : (task.assignedTo as any).username || (task.assignedTo as any).email || 'Usuario'
+                    ) : 'N/A'}
+                  </Td>
                   <Td>
                     <HStack spacing={2}>
                       <Button

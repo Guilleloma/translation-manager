@@ -545,8 +545,8 @@ export default function Home() {
         const result = await response.json();
         console.log('📥 Respuesta API:', { success: result.success, copyId: result.copy?.id });
 
-        if (result.success) {
-          console.log('✅ Copy creado exitosamente:', result.copy.id);
+        if (result.success && result.copy) {
+          console.log('✅ Copy creado exitosamente:', result.copy.id || 'ID no disponible');
           
           // Siempre actualizar la lista completa para asegurar sincronización
           console.log('🔄 Actualizando lista de copys...');
