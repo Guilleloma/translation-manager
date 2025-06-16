@@ -163,6 +163,11 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
  * y maneja mejor las notificaciones para evitar saturar la interfaz
  */
 const handleAssign = async () => {
+  // Obtener el usuario seleccionado
+  const translator = users.find(user => user.id === selectedTranslator);
+  const totalCopys = selectedCopys.length;
+  
+  // Validar selecciones antes de proceder
   if (!selectedTranslator || selectedCopys.length === 0) {
     toast({
       title: 'Error',
@@ -173,10 +178,6 @@ const handleAssign = async () => {
     });
     return;
   }
-
-  // Obtener el usuario seleccionado
-  const translator = users.find(user => user.id === selectedTranslator);
-  const totalCopys = selectedCopys.length;
   
   // Activar estado de carga
   setIsAssigning(true);
@@ -192,35 +193,56 @@ const handleAssign = async () => {
     position: 'bottom-right',
   });
   
-  // Asignar cada copy seleccionado con un pequeño retraso para permitir actualizaciones de UI
   try {
+    // Asignar cada copy seleccionado
     for (let i = 0; i < selectedCopys.length; i++) {
       const copyId = selectedCopys[i];
       const pendingCopy = pendingCopys.find(copy => copy.id === copyId);
       
       if (pendingCopy) {
-        if (pendingCopy.needsTranslation) {
-          // Crear un nuevo copy si es necesario
+        // Verificar si ya existe un copy con el mismo slug e idioma
+        const existingCopy = copys.find(c => 
+          c.slug === pendingCopy.slug && 
+          c.language === pendingCopy.language
+        );
+
+        if (existingCopy) {
+          // Si existe, actualizar el copy existente
+          console.log(`[CopyAssignment] Actualizando copy existente: ${existingCopy.id} (${existingCopy.slug} - ${existingCopy.language})`);
+          updateCopy(existingCopy.id, {
+            assignedTo: selectedTranslator,
+            assignedAt: new Date(),
+            status: 'assigned',
+            updatedAt: new Date()
+          });
+        } else if (pendingCopy.needsTranslation) {
+          // Si no existe y necesita traducción, crear uno nuevo
+          console.log(`[CopyAssignment] Creando nuevo copy: ${pendingCopy.slug} (${pendingCopy.language})`);
           const newCopy: Copy = {
             id: `${pendingCopy.slug}_${pendingCopy.language}_${Date.now()}`,
             slug: pendingCopy.slug,
             language: pendingCopy.language,
-            text: '',
+            text: pendingCopy.text || '[Texto pendiente de traducción]',
             status: 'assigned',
             assignedTo: selectedTranslator,
             assignedAt: new Date(),
             createdAt: new Date(),
             updatedAt: new Date(),
-            needsSlugReview: false
+            needsSlugReview: false,
+            history: [],
+            tags: [],
+            comments: []
           };
           
           await dataService.addCopy(newCopy);
         } else {
-          // Actualizar el copy existente
+          // Actualizar el copy existente (caso por si acaso)
+          console.log(`[CopyAssignment] Actualizando copy existente (caso alternativo): ${copyId}`);
           updateCopy(copyId, {
             assignedTo: selectedTranslator,
             assignedAt: new Date(),
             status: 'assigned',
+            updatedAt: new Date()
           });
         }
       }
@@ -283,7 +305,7 @@ const handleAssign = async () => {
     setIsAssigning(false);
     setProgress(0);
   }
-  };
+};
 
   // Obtener nombre del idioma a partir del código
   const getLanguageName = (code: string) => {

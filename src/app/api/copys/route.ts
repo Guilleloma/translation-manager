@@ -121,12 +121,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar que no exista un copy con el mismo slug
-    console.log('🔍 Verificando duplicados de slug...');
-    const existingCopy = await Copy.findOne({ slug: body.slug });
+    // Verificar que no exista un copy con el mismo slug e idioma
+    console.log('🔍 Verificando duplicados de slug e idioma...');
+    const existingCopy = await Copy.findOne({ 
+      slug: body.slug,
+      language: body.language 
+    });
     
     if (existingCopy) {
-      console.log('⚠️ SLUG DUPLICADO ENCONTRADO:', {
+      console.log('⚠️ COPY DUPLICADO ENCONTRADO:', {
         existingId: existingCopy._id,
         existingSlug: existingCopy.slug,
         existingLanguage: existingCopy.language,
@@ -135,19 +138,49 @@ export async function POST(request: NextRequest) {
         newGroupId: body.translationGroupId
       });
       
-      // Si pertenecen al mismo grupo de traducción, permitir el duplicado
+      // Si pertenecen al mismo grupo de traducción, actualizar el existente
       if (existingCopy.translationGroupId && body.translationGroupId && 
           existingCopy.translationGroupId === body.translationGroupId) {
-        console.log('✅ Mismo grupo de traducción, permitiendo slug duplicado');
+        console.log('✅ Mismo grupo de traducción, actualizando copy existente');
+        
+        // Actualizar el copy existente con los nuevos datos
+        const updatedCopy = await Copy.findByIdAndUpdate(
+          existingCopy._id,
+          { 
+            $set: { 
+              ...body,
+              updatedAt: new Date() 
+            } 
+          },
+          { new: true }
+        );
+        
+        console.log('✅ COPY ACTUALIZADO:', {
+          id: updatedCopy._id,
+          slug: updatedCopy.slug,
+          language: updatedCopy.language,
+          status: updatedCopy.status
+        });
+        
+        return NextResponse.json({
+          success: true,
+          data: updatedCopy,
+          message: 'Copy actualizado exitosamente',
+          wasUpdated: true
+        });
       } else {
-        console.error('❌ Slug duplicado en diferente grupo o sin grupo');
+        console.error('❌ Copy duplicado con mismo slug e idioma');
         return NextResponse.json(
-          { success: false, error: `Ya existe un copy con el slug "${body.slug}"` },
+          { 
+            success: false, 
+            error: `Ya existe un copy con el slug "${body.slug}" para el idioma "${body.language}"`,
+            existingCopyId: existingCopy._id
+          },
           { status: 400 }
         );
       }
     } else {
-      console.log('✅ Slug disponible para uso');
+      console.log('✅ Slug e idioma disponibles para uso');
     }
 
     // Crear el nuevo copy
@@ -187,7 +220,7 @@ export async function POST(request: NextRequest) {
     console.log('🚀 ===== API POST /api/copys - FIN EXITOSO =====');
     return NextResponse.json({
       success: true,
-      copy: savedCopy,
+      data: savedCopy,
       message: 'Copy creado exitosamente'
     });
   } catch (error: any) {
