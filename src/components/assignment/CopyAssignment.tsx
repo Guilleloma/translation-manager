@@ -246,7 +246,10 @@ export default function CopyAssignment({ copys, updateCopy }: CopyAssignmentProp
                 slug: newCopy.slug,
                 language: newCopy.language,
                 assignedTo: newCopy.assignedTo,
-                status: newCopy.status
+                status: newCopy.status,
+                // Datos adicionales para debugging
+                selectedTranslator: selectedTranslator,
+                translatorData: translator
               });
               
               // Intentar crear el copy y manejar errores específicos

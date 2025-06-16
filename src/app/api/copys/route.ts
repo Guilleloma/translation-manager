@@ -222,6 +222,8 @@ export async function POST(request: NextRequest) {
       slug: body.slug,
       language: body.language,
       status: body.status || 'not_assigned',
+      assignedTo: body.assignedTo, // Añadir campo assignedTo
+      assignedAt: body.assignedAt, // Añadir campo assignedAt
       createdAt: new Date(),
       updatedAt: new Date(),
       history: body.history || [],
@@ -233,6 +235,8 @@ export async function POST(request: NextRequest) {
     console.log('💾 COPY A GUARDAR:', {
       slug: newCopy.slug,
       language: newCopy.language,
+      assignedTo: newCopy.assignedTo, // Log del campo assignedTo
+      status: newCopy.status,
       needsSlugReview: newCopy.needsSlugReview,
       translationGroupId: newCopy.translationGroupId,
       isOriginalText: newCopy.isOriginalText,
@@ -244,6 +248,7 @@ export async function POST(request: NextRequest) {
       id: savedCopy._id,
       slug: savedCopy.slug,
       language: savedCopy.language,
+      assignedTo: savedCopy.assignedTo, // Log del campo assignedTo
       needsSlugReview: savedCopy.needsSlugReview,
       translationGroupId: savedCopy.translationGroupId,
       isOriginalText: savedCopy.isOriginalText

@@ -74,13 +74,22 @@ class ApiService {
       
       const result: ApiResponse<T> = await response.json();
       
-      if (!result.success || !result.data) {
+      // Para entity 'copy', la respuesta viene en result.copy
+      // Para otras entidades, mantener result.data
+      let responseData = null;
+      if (entity === 'copy') {
+        responseData = (result as any).copy;
+      } else {
+        responseData = result.data;
+      }
+      
+      if (!result.success || !responseData) {
         console.error('[ApiService] Error en la respuesta:', result.error);
         throw new Error(result.error || 'Error desconocido');
       }
       
       console.log(`[ApiService] ${entity} creado exitosamente`);
-      return result.data;
+      return responseData;
     } catch (error) {
       console.error(`[ApiService] Error al crear ${entity}:`, error);
       throw error; // Re-lanzar el error para que el caller pueda manejarlo
@@ -138,8 +147,17 @@ class ApiService {
         return null;
       }
       
+      // Para entity 'copy', la respuesta viene en result.copy
+      // Para otras entidades, mantener result.data
+      let responseData = null;
+      if (entity === 'copy') {
+        responseData = (result as any).copy;
+      } else {
+        responseData = result.data;
+      }
+      
       console.log(`[ApiService] ${entity} actualizado exitosamente`);
-      return result.data || null;
+      return responseData || null;
     } catch (error) {
       console.error(`[ApiService] Error al actualizar ${entity}:`, error);
       return null;
