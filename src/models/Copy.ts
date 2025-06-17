@@ -183,14 +183,15 @@ const CopySchema: Schema = new Schema({
 /**
  * Índices compuestos para optimizar consultas
  */
-// Índice único para slug+idioma, pero solo cuando el slug no esté vacío
+// Índice único para slug (único globalmente)
 CopySchema.index(
-  { slug: 1, language: 1 }, 
+  { slug: 1 }, 
   { 
     unique: true,
     partialFilterExpression: { 
-      slug: { $exists: true, $ne: '', $ne: null } 
-    }
+      slug: { $exists: true, $ne: '' } 
+    },
+    name: 'slug_unique_global'
   }
 );
 CopySchema.index({ language: 1 });

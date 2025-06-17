@@ -74,6 +74,9 @@ export async function PATCH(
       bodyKeys: Object.keys(body) 
     });
     
+    // **NUEVA LÓGICA PARA MANEJO DE SLUGS ÚNICOS**
+    console.log('🔄 === INICIANDO LÓGICA DE SLUG ÚNICO ===');
+    
     // El id puede ser un ObjectId de MongoDB o un slug
     let existingCopy;
     let isSearchingBySlug = false;
@@ -109,239 +112,271 @@ export async function PATCH(
           isOriginalText: existingCopy.isOriginalText
         });
       }
-      
-      // Si no se encuentra por slug exacto, intentar buscar copys relacionados
-      if (!existingCopy && updateAllLanguages) {
-        console.log(`🔎 Slug '${id}' no encontrado. Intentando buscar copys relacionados...`);
-        
-        // Buscar todos los copys que tienen el slug en el formato original
-        // O que tengan alguna relación (comparten el mismo texto)
-        const relatedCopies = await Copy.find({
-          $or: [
-            { slug: { $regex: new RegExp(id, 'i') } },
-            { slug: { $regex: new RegExp(slug, 'i') } }
-          ]
-        }).limit(5);
-        
-        if (relatedCopies.length > 0) {
-          console.log(`🔍 Encontrados ${relatedCopies.length} copys relacionados:`, 
-            relatedCopies.map(c => ({ slug: c.slug, language: c.language })));
-          
-          // Usar el primer copy relacionado
-          existingCopy = relatedCopies[0];
-          isSearchingBySlug = true;
-          console.log(`🔧 Usando el primer copy relacionado: ${existingCopy.slug} (${existingCopy.language})`);
-        }
-      }
     }
     
     if (!existingCopy) {
-      console.error(`❌ Copy no encontrado con ID/slug: ${id}`);
       return NextResponse.json(
-        { success: false, error: `Copy no encontrado con ID/slug: ${id}` },
+        { success: false, error: 'Copy no encontrado' },
         { status: 404 }
       );
     }
-
-    console.log('📊 ESTADO ANTES DE ACTUALIZACIÓN:', {
-      copyId: existingCopy._id,
-      currentSlug: existingCopy.slug,
-      newSlug: slug,
-      needsSlugReview: existingCopy.needsSlugReview,
-      translationGroupId: existingCopy.translationGroupId,
-      updateAllLanguages
-    });
-
-    // Si se está actualizando el slug
-    if (slug && slug !== existingCopy.slug) {
-      console.log('🔄 ACTUALIZANDO SLUG...');
-      console.log(`🔧 Cambio de slug: "${existingCopy.slug}" → "${slug}"`);
-      
-      // El slug debe ser único globalmente, independientemente del grupo de traducción
-      // Verificar que el nuevo slug no exista ya (excepto para el mismo grupo)
-      const translationGroupId = existingCopy.translationGroupId;
-      
-      console.log(`🔐 Verificando disponibilidad del slug: ${slug}`);
-      console.log(`🔑 Grupo de traducción actual: ${translationGroupId || 'ninguno'}`);
-      
-      const duplicateCheck = await Copy.findOne({
-        slug: slug,
-        // Si pertenece a un grupo, excluir ese grupo completo
-        ...((translationGroupId) ? 
-          { translationGroupId: { $ne: translationGroupId } } : 
-          { _id: { $ne: existingCopy._id } })
+    
+    // **LÓGICA DE ACTUALIZACIÓN DE SLUG ÚNICO**
+    if (slug !== undefined && slug !== existingCopy.slug) {
+      console.log('🚨 CAMBIO DE SLUG DETECTADO:', {
+        slugAnterior: existingCopy.slug,
+        slugNuevo: slug,
+        translationGroupId: existingCopy.translationGroupId
       });
-      
-      if (duplicateCheck) {
-        console.error(`❌ Error: El slug "${slug}" ya está en uso por otro grupo de traducción`);
+
+      // 1. Verificar si el nuevo slug ya existe
+      const existingSlug = await Copy.findOne({ 
+        slug,
+        _id: { $ne: existingCopy._id } // Excluir el documento actual
+      });
+
+      if (existingSlug) {
+        console.error(`❌ Error: El slug "${slug}" ya está en uso por otro copy`);
         return NextResponse.json(
-          { success: false, error: `Ya existe un copy con ese slug en otro grupo de traducción` },
+          { 
+            success: false, 
+            error: `El slug "${slug}" ya está en uso. Por favor, elija otro.`
+          },
           { status: 400 }
         );
       }
+
+      // 2. Si el copy no tiene grupo de traducción, buscar otros copys con el mismo slug
+      let relatedCopies = [];
       
-      console.log(`✅ Slug "${slug}" disponible para uso`);
-      
-      // Si updateAllLanguages es true, actualizar todos los copys del mismo grupo de traducción
-      if (updateAllLanguages) {
-        console.log(`💾 ACTUALIZANDO GRUPO DE TRADUCCIÓN`);
-        console.log(`🔧 Cambiando slug "${existingCopy.slug}" a "${slug}" en todos los idiomas`);
-        
-        // Crear objeto de actualización
-        const updateData: any = { 
-          slug: slug,
-          updatedAt: new Date(),
-          // Marcar que el slug ya no necesita revisión
-          needsSlugReview: false
-        };
-        
-        // Si hay metadatos, agregarlos a la actualización
-        if (metadata) {
-          console.log(`🔧 Agregando metadatos:`, metadata);
-          updateData.metadata = metadata;
-        }
-        
-        console.log(`🔧 Marcando slug como revisado por developer: ${existingCopy.slug} → ${slug}`);
+      if (existingCopy.translationGroupId) {
+        // Buscar por translationGroupId si existe
+        relatedCopies = await Copy.find({ 
+          translationGroupId: existingCopy.translationGroupId,
+          _id: { $ne: existingCopy._id } // Excluir el documento actual
+        });
+        console.log(`🔗 Encontrados ${relatedCopies.length} copys por translationGroupId: ${existingCopy.translationGroupId}`);
+      } else {
+        // Si no tiene grupo, buscar por slug actual
+        relatedCopies = await Copy.find({ 
+          slug: existingCopy.slug,
+          _id: { $ne: existingCopy._id } // Excluir el documento actual
+        });
+        console.log(`🔗 Encontrados ${relatedCopies.length} copys con el mismo slug: ${existingCopy.slug}`);
+      }
+
+      // 3. Si hay copys relacionados, actualizarlos todos
+      if (relatedCopies.length > 0) {
+        console.log('🌐 ACTUALIZANDO SLUG EN MÚLTIPLES IDIOMAS...');
         
         try {
-          // ESTRATEGIA PRINCIPAL: Buscar por translationGroupId si existe
-          const translationGroupId = existingCopy.translationGroupId;
-          let copiesToUpdate = [];
-          
-          if (translationGroupId) {
-            // Buscar todas las traducciones que pertenecen al mismo grupo
-            copiesToUpdate = await Copy.find({ translationGroupId });
-            console.log(`🔑 Encontrados ${copiesToUpdate.length} copys en el grupo: ${translationGroupId}`);
-            console.log('📋 COPYS EN EL GRUPO:', copiesToUpdate.map(c => ({
-              id: c._id,
-              slug: c.slug,
-              language: c.language,
-              needsSlugReview: c.needsSlugReview
-            })));
-          } else {
-            // Si no tiene grupo, crear uno nuevo y asignarlo a este copy
+          // Actualizar todos los copys relacionados en una sola operación
+          const updateResult = await Copy.updateMany(
+            { _id: { $in: relatedCopies.map(c => c._id) } },
+            { 
+              $set: { 
+                slug: slug,
+                updatedAt: new Date()
+              } 
+            }
+          );
+
+          console.log('✅ SLUGS ACTUALIZADOS:', {
+            matchedCount: updateResult.matchedCount,
+            modifiedCount: updateResult.modifiedCount,
+            copysAfectados: relatedCopies.map(c => `${c.language}: ${c._id}`)
+          });
+
+          // Si el copy actual no tenía grupo, crear uno nuevo y asignarlo a todos
+          if (!existingCopy.translationGroupId) {
             const newGroupId = generateUniqueId();
-            console.log(`🌟 Creando nuevo grupo de traducción: ${newGroupId}`);
+            console.log(`🆕 Creando nuevo grupo de traducción: ${newGroupId}`);
             
-            // Actualizar el copy actual con un groupId
-            await Copy.findByIdAndUpdate(existingCopy._id, { 
-              translationGroupId: newGroupId,
+            // Actualizar todos los copys (incluyendo el actual) con el nuevo groupId
+            await Copy.updateMany(
+              { 
+                $or: [
+                  { _id: existingCopy._id },
+                  { _id: { $in: relatedCopies.map(c => c._id) } }
+                ]
+              },
+              { 
+                $set: { 
+                  translationGroupId: newGroupId,
+                  isOriginalText: false
+                } 
+              }
+            );
+            
+            // Marcar el primer copy como original
+            await Copy.findByIdAndUpdate(existingCopy._id, {
               isOriginalText: true
             });
             
-            console.log('✅ Copy principal actualizado con nuevo grupo');
-            
-            // Añadir el groupId al objeto de actualización
-            updateData.translationGroupId = newGroupId;
-            
-            // Buscar otras traducciones con el mismo slug o texto
-            copiesToUpdate = await Copy.find({
-              $or: [
-                { slug: existingCopy.slug, _id: { $ne: existingCopy._id } },
-                { text: existingCopy.text, language: { $ne: existingCopy.language } }
-              ]
-            });
-            
-            console.log(`🔍 Encontrados ${copiesToUpdate.length} copys relacionados por slug o texto`);
-            console.log('📋 COPYS RELACIONADOS:', copiesToUpdate.map(c => ({
-              id: c._id,
-              slug: c.slug,
-              language: c.language,
-              text: c.text.substring(0, 20) + '...'
-            })));
+            console.log(`✅ Grupo de traducción ${newGroupId} creado y asignado a ${relatedCopies.length + 1} copys`);
           }
-          
-          // Contador para el número de actualizaciones
-          let updatedCount = 0;
-          
-          // Si encontramos copys relacionados, actualizarlos todos
-          if (copiesToUpdate.length > 0) {
-            console.log(`🔄 INICIANDO ACTUALIZACIÓN DE ${copiesToUpdate.length} COPYS...`);
-            
-            // Actualizar todos los copys uno por uno para mejor control y seguimiento
-            for (const copy of copiesToUpdate) {
-              console.log(`🔧 Actualizando: ${copy.slug} (${copy.language}) → ${slug}`);
-              
-              // Actualizar con el nuevo slug y el mismo groupId
-              const updatedCopy = await Copy.findByIdAndUpdate(copy._id, { 
-                $set: { 
-                  ...updateData,
-                  translationGroupId: translationGroupId || updateData.translationGroupId
-                } 
-              }, { new: true });
-              
-              console.log(`✅ Copy actualizado:`, {
-                id: updatedCopy._id,
-                oldSlug: copy.slug,
-                newSlug: updatedCopy.slug,
-                language: updatedCopy.language,
-                groupId: updatedCopy.translationGroupId
-              });
-              
-              updatedCount++;
-            }
-          }
-          
-          // Siempre actualizar el copy actual
-          console.log(`🔧 Actualizando copy principal: ${existingCopy._id}`);
-          const updatedMainCopy = await Copy.findByIdAndUpdate(
-            existingCopy._id,
-            { $set: updateData },
-            { new: true }
+        } catch (error) {
+          console.error('❌ Error al actualizar slugs relacionados:', error);
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'Error al actualizar las traducciones relacionadas',
+              details: error instanceof Error ? error.message : 'Error desconocido'
+            },
+            { status: 500 }
           );
-          
-          console.log(`✅ Copy principal actualizado:`, {
-            id: updatedMainCopy._id,
-            slug: updatedMainCopy.slug,
-            language: updatedMainCopy.language,
-            needsSlugReview: updatedMainCopy.needsSlugReview,
-            groupId: updatedMainCopy.translationGroupId
-          });
-          
-          // Si no actualizó otros copys, incrementar el contador para el principal
-          if (copiesToUpdate.length === 0) {
-            updatedCount++;
-          }
-          
-          // Obtener todos los copys actualizados para mostrar en la respuesta
-          const finalCopies = await Copy.find({ slug });
-          console.log(`📊 RESULTADO FINAL: ${finalCopies.length} copys con slug "${slug}"`);
-          console.log('📋 COPYS FINALES:', finalCopies.map(c => ({
+        }
+      } else {
+        console.log('📝 No hay copys relacionados para actualizar');
+      }
+    }
+    
+    // Continuar con la lógica existente para updateAllLanguages
+    if (updateAllLanguages && existingCopy.translationGroupId) {
+      console.log('🌍 Actualizando en todos los idiomas del grupo:', existingCopy.translationGroupId);
+      
+      try {
+        // ESTRATEGIA PRINCIPAL: Buscar por translationGroupId si existe
+        const translationGroupId = existingCopy.translationGroupId;
+        let copiesToUpdate = [];
+        
+        if (translationGroupId) {
+          // Buscar todas las traducciones que pertenecen al mismo grupo
+          copiesToUpdate = await Copy.find({ translationGroupId });
+          console.log(`🔑 Encontrados ${copiesToUpdate.length} copys en el grupo: ${translationGroupId}`);
+          console.log('📋 COPYS EN EL GRUPO:', copiesToUpdate.map(c => ({
             id: c._id,
             slug: c.slug,
             language: c.language,
-            needsSlugReview: c.needsSlugReview,
-            groupId: c.translationGroupId
+            needsSlugReview: c.needsSlugReview
           })));
+        } else {
+          // Si no tiene grupo, crear uno nuevo y asignarlo a este copy
+          const newGroupId = generateUniqueId();
+          console.log(`🌟 Creando nuevo grupo de traducción: ${newGroupId}`);
           
-          // Enviar un evento especial para notificar a los clientes
-          console.log(`📣 Emitiendo evento copysUpdated para notificar cambios de slugs`);
-          
-          console.log('🚀 ===== API PATCH - ACTUALIZACIÓN GRUPO EXITOSA =====');
-          
-          return NextResponse.json({
-            success: true,
-            message: `✅ Slug actualizado correctamente en ${updatedCount} traducciones. Ahora hay ${finalCopies.length} copys con este slug.`,
-            updatedCopies: finalCopies,
-            groupId: translationGroupId || updateData.translationGroupId
+          // Actualizar el copy actual con un groupId
+          await Copy.findByIdAndUpdate(existingCopy._id, { 
+            translationGroupId: newGroupId,
+            isOriginalText: true
           });
-        } catch (error) {
-          console.error(`❌ Error al actualizar grupo de traducción:`, error);
           
-          // Intentar actualizar solo el copy actual como último recurso
-          const fallbackCopy = await Copy.findByIdAndUpdate(
-            existingCopy._id,
-            { $set: updateData },
-            { new: true }
-          );
+          console.log('✅ Copy principal actualizado con nuevo grupo');
           
-          return NextResponse.json({
-            success: true,
-            message: `⚠️ Advertencia: Solo se actualizó el copy en ${existingCopy.language} debido a un error.`,
-            error: error instanceof Error ? error.message : 'Error desconocido',
-            updatedCopies: [fallbackCopy]
+          // Añadir el groupId al objeto de actualización
+          const updateData: any = { 
+            translationGroupId: newGroupId
+          };
+          
+          // Buscar otras traducciones con el mismo slug o texto
+          copiesToUpdate = await Copy.find({
+            $or: [
+              { slug: existingCopy.slug, _id: { $ne: existingCopy._id } },
+              { text: existingCopy.text, language: { $ne: existingCopy.language } }
+            ]
           });
+          
+          console.log(`🔍 Encontrados ${copiesToUpdate.length} copys relacionados por slug o texto`);
+          console.log('📋 COPYS RELACIONADOS:', copiesToUpdate.map(c => ({
+            id: c._id,
+            slug: c.slug,
+            language: c.language,
+            text: c.text.substring(0, 20) + '...'
+          })));
         }
+        
+        // Contador para el número de actualizaciones
+        let updatedCount = 0;
+        
+        // Si encontramos copys relacionados, actualizarlos todos
+        if (copiesToUpdate.length > 0) {
+          console.log(`🔄 INICIANDO ACTUALIZACIÓN DE ${copiesToUpdate.length} COPYS...`);
+          
+          // Actualizar todos los copys uno por uno para mejor control y seguimiento
+          for (const copy of copiesToUpdate) {
+            console.log(`🔧 Actualizando: ${copy.slug} (${copy.language}) → ${slug}`);
+            
+            // Actualizar con el nuevo slug y el mismo groupId
+            const updatedCopy = await Copy.findByIdAndUpdate(copy._id, { 
+              $set: { 
+                slug: slug,
+                updatedAt: new Date(),
+                // Marcar que el slug ya no necesita revisión
+                needsSlugReview: false
+              } 
+            }, { new: true });
+            
+            console.log(`✅ Copy actualizado:`, {
+              id: updatedCopy._id,
+              oldSlug: copy.slug,
+              newSlug: updatedCopy.slug,
+              language: updatedCopy.language,
+              groupId: updatedCopy.translationGroupId
+            });
+            
+            updatedCount++;
+          }
+        }
+        
+        // Siempre actualizar el copy actual
+        console.log(`🔧 Actualizando copy principal: ${existingCopy._id}`);
+        const updatedMainCopy = await Copy.findByIdAndUpdate(
+          existingCopy._id,
+          { $set: { slug: slug, updatedAt: new Date() } },
+          { new: true }
+        );
+        
+        console.log(`✅ Copy principal actualizado:`, {
+          id: updatedMainCopy._id,
+          slug: updatedMainCopy.slug,
+          language: updatedMainCopy.language,
+          needsSlugReview: updatedMainCopy.needsSlugReview,
+          groupId: updatedMainCopy.translationGroupId
+        });
+        
+        // Si no actualizó otros copys, incrementar el contador para el principal
+        if (copiesToUpdate.length === 0) {
+          updatedCount++;
+        }
+        
+        // Obtener todos los copys actualizados para mostrar en la respuesta
+        const finalCopies = await Copy.find({ slug });
+        console.log(`📊 RESULTADO FINAL: ${finalCopies.length} copys con slug "${slug}"`);
+        console.log('📋 COPYS FINALES:', finalCopies.map(c => ({
+          id: c._id,
+          slug: c.slug,
+          language: c.language,
+          needsSlugReview: c.needsSlugReview,
+          groupId: c.translationGroupId
+        })));
+        
+        // Enviar un evento especial para notificar a los clientes
+        console.log(`📣 Emitiendo evento copysUpdated para notificar cambios de slugs`);
+        
+        console.log('🚀 ===== API PATCH - ACTUALIZACIÓN GRUPO EXITOSA =====');
+        
+        return NextResponse.json({
+          success: true,
+          message: `✅ Slug actualizado correctamente en ${updatedCount} traducciones. Ahora hay ${finalCopies.length} copys con este slug.`,
+          updatedCopies: finalCopies,
+          groupId: translationGroupId
+        });
+      } catch (error) {
+        console.error(`❌ Error al actualizar grupo de traducción:`, error);
+        
+        // Intentar actualizar solo el copy actual como último recurso
+        const fallbackCopy = await Copy.findByIdAndUpdate(
+          existingCopy._id,
+          { $set: { slug: slug, updatedAt: new Date() } },
+          { new: true }
+        );
+        
+        return NextResponse.json({
+          success: true,
+          message: `⚠️ Advertencia: Solo se actualizó el copy en ${existingCopy.language} debido a un error.`,
+          error: error instanceof Error ? error.message : 'Error desconocido',
+          updatedCopies: [fallbackCopy]
+        });
       }
     }
     
